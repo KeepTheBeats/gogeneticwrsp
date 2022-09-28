@@ -49,3 +49,10 @@ func TestInnerGenerateResourceNetLatency(t *testing.T) {
 		fmt.Println(generateResourceNetLatency(1, 5, 3, 3), "ms")
 	}
 }
+
+func TestInnerGeneratePriority(t *testing.T) {
+	fmt.Println("Generate 40 Priority values of application:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(generatePriority(100, 65535.9, 150, 300))
+	}
+}

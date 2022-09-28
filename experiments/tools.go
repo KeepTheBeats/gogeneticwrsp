@@ -1,8 +1,9 @@
 package experiments
 
 import (
-	"gogeneticwrsp/random"
 	"math"
+
+	"github.com/KeepTheBeats/routing-algorithms/random"
 )
 
 // CPU logical cores,
@@ -34,4 +35,9 @@ func generateResourceNetLatency(power10LowerBound, power10UpperBound, miu, sigma
 	power10 := int(random.NormalRandomBM(power10LowerBound, power10UpperBound, miu, sigma))
 	head := random.RandomInt(1, 9)
 	return float64(head) * math.Pow10(power10)
+}
+
+// Priority of application range [100, 65535]
+func generatePriority(lowerBound, upperBound, miu, sigma float64) uint16 {
+	return uint16(random.NormalRandomBM(lowerBound, upperBound, miu, sigma))
 }
