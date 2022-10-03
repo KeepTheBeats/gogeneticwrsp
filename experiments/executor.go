@@ -15,11 +15,11 @@ import (
 func getFilePaths(numCloud, numApp int) (string, string) {
 	var cloudPath, appPath string
 	if runtime.GOOS == "windows" {
-		cloudPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experiments\\cloud_%d_.json", build.Default.GOPATH, numCloud)
-		appPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experiments\\app_%d_.json", build.Default.GOPATH, numApp)
+		cloudPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experiments\\cloud_%d.json", build.Default.GOPATH, numCloud)
+		appPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experiments\\app_%d.json", build.Default.GOPATH, numApp)
 	} else {
-		cloudPath = fmt.Sprintf("%s/src/gogeneticwrsp/experiments/cloud_%d_.json", build.Default.GOPATH, numCloud)
-		appPath = fmt.Sprintf("%s/src/gogeneticwrsp/experiments/app_%d_.json", build.Default.GOPATH, numApp)
+		cloudPath = fmt.Sprintf("%s/src/gogeneticwrsp/experiments/cloud_%d.json", build.Default.GOPATH, numCloud)
+		appPath = fmt.Sprintf("%s/src/gogeneticwrsp/experiments/app_%d.json", build.Default.GOPATH, numApp)
 	}
 	return cloudPath, appPath
 }
