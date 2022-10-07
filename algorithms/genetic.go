@@ -506,6 +506,12 @@ func (g *Genetic) DrawChart() {
 
 		graph := chart.Chart{
 			Title: "Evolution",
+			//TitleStyle: chart.Style{
+			//	Show: true,
+			//},
+			//Width: 600,
+			//Height: 1800,
+			//DPI:    300,
 			XAxis: chart.XAxis{
 				Name:      "Iteration Number",
 				NameStyle: chart.StyleShow(),
@@ -537,16 +543,31 @@ func (g *Genetic) DrawChart() {
 					// the first value (iteration -1) is much different with others, which will cause that we cannot observer the trend of the evolution
 					XValues: g.BestUntilNowUpdateIterations[1:],
 					YValues: g.FitnessRecordBestUntilNow[1:],
+					Style: chart.Style{
+						Show:            true,
+						StrokeDashArray: []float64{5.0, 3.0, 2.0, 3.0},
+						StrokeWidth:     1,
+					},
 				},
 				chart.ContinuousSeries{
 					Name:    "Best Acceptable Fitness in each iterations",
 					XValues: xValuesIterationBest,
 					YValues: g.FitnessRecordIterationBestAcceptable,
+					Style: chart.Style{
+						Show:            true,
+						StrokeDashArray: []float64{2.0, 3.0},
+						StrokeWidth:     1,
+					},
 				},
 				chart.ContinuousSeries{
 					Name:    "Best Acceptable Fitness in all iterations",
 					XValues: g.BestAcceptableUntilNowUpdateIterations[1:],
 					YValues: g.FitnessRecordBestAcceptableUntilNow[1:],
+					Style: chart.Style{
+						Show:            true,
+						StrokeDashArray: []float64{5.0, 3.0},
+						StrokeWidth:     1,
+					},
 				},
 			},
 		}

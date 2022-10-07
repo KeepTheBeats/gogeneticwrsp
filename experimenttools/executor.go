@@ -1,6 +1,7 @@
 package experimenttools
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"github.com/wcharczuk/go-chart"
@@ -10,8 +11,10 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"gogeneticwrsp/model"
 )
@@ -284,7 +287,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 	for i := 0; i < len(apps); i++ {
 		// the ith applications request comes
 		currentApps = append(currentApps, apps[i])
-		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 5000, algorithms.InitializeUndeployedChromosome, clouds, currentApps)
+		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, currentApps)
 		ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, clouds, currentApps)
 		solution, err := ga.Schedule(clouds, currentApps)
 		if err != nil {
@@ -300,6 +303,49 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		MCASGARecorder.StorageIdleRecords = append(MCASGARecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		MCASGARecorder.AcceptedPriorityRateRecords = append(MCASGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, currentApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, currentApps, currentSolution.SchedulingResult)))
 	}
+
+	// output csv files
+	generateCsvFunc := func(recorder ContinuousHelper) [][]string {
+		var csvContent [][]string
+		csvContent = append(csvContent, []string{"Number of Applications", "CPU Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Application Acceptance Rate"})
+		for i := 0; i < len(recorder.CPUIdleRecords); i++ {
+			csvContent = append(csvContent, []string{fmt.Sprintf("%d", i+1), fmt.Sprintf("%f", recorder.CPUIdleRecords[i]), fmt.Sprintf("%f", recorder.MemoryIdleRecords[i]), fmt.Sprintf("%f", recorder.StorageIdleRecords[i]), fmt.Sprintf("%f", recorder.AcceptedPriorityRateRecords[i])})
+		}
+		return csvContent
+	}
+	var ffCsvContent [][]string = generateCsvFunc(firstFitRecorder)
+	var rfCsvContent [][]string = generateCsvFunc(randomFitRecorder)
+	var MCASGACsvContent [][]string = generateCsvFunc(MCASGARecorder)
+
+	csvPathFunc := func(name string) string {
+		name = strings.Replace(name, " ", "_", -1)
+		var csvpath string
+		if runtime.GOOS == "windows" {
+			csvpath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experimenttools\\%s.csv", build.Default.GOPATH, name)
+		} else {
+			csvpath = fmt.Sprintf("%s/src/gogeneticwrsp/experimenttools/%s.csv", build.Default.GOPATH, name)
+		}
+		return csvpath
+	}
+
+	writeFileFunc := func(fileName string, csvContent [][]string) {
+		f, err := os.Create(fileName)
+		defer f.Close()
+		if err != nil {
+			log.Fatalln("Fatal: ", err)
+		}
+		w := csv.NewWriter(f)
+		defer w.Flush()
+
+		for _, record := range csvContent {
+			if err := w.Write(record); err != nil {
+				log.Fatalf("write record %v, error: %s", record, err.Error())
+			}
+		}
+	}
+	writeFileFunc(csvPathFunc(firstFitRecorder.Name), ffCsvContent)
+	writeFileFunc(csvPathFunc(randomFitRecorder.Name), rfCsvContent)
+	writeFileFunc(csvPathFunc(MCASGARecorder.Name), MCASGACsvContent)
 
 	// draw line charts
 	var CPUChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
