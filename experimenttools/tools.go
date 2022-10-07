@@ -1,4 +1,4 @@
-package experiments
+package experimenttools
 
 import (
 	"math"
@@ -19,10 +19,18 @@ func generateResourceCPU(lowerBound, upperBound, miu, sigma float64, forCapacity
 	return float64(multiple_of_4_cores)
 }
 
+func generateResourceCPUCapacity(lowerBound, upperBound float64) float64 {
+	return float64(random.RandomInt(int(lowerBound), int(upperBound)))
+}
+
 // memory and storage Byte, forCapacity, a power of 2
-func generateResourceMemoryStorageCapacity(powerLowerBound, powerUpperBound, miu, sigma float64) float64 {
-	power := int(random.NormalRandomBM(powerLowerBound, powerUpperBound, miu, sigma))
-	return math.Pow(2, float64(power))
+//func generateResourceMemoryStorageCapacity(powerLowerBound, powerUpperBound, miu, sigma float64) float64 {
+//	power := int(random.NormalRandomBM(powerLowerBound, powerUpperBound, miu, sigma))
+//	return math.Pow(2, float64(power))
+//}
+
+func generateResourceMemoryStorageCapacity(lowerBound, upperBound float64) float64 {
+	return random.RandomFloat64(lowerBound, upperBound)
 }
 
 // memory and storage Byte, forRequest
