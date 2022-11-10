@@ -19,7 +19,7 @@ func SimulateDeploy(clouds []model.Cloud, apps []model.Application, solution mod
 			continue
 		}
 
-		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU -= apps[appIndex].Requests.CPU
+		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.LogicalCores -= apps[appIndex].Requests.CPU
 		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Memory -= apps[appIndex].Requests.Memory
 		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Storage -= apps[appIndex].Requests.Storage
 		// NetLatency does not need to be subtracted, but if we use NetBandwidth, we need to subtract it.
@@ -37,7 +37,7 @@ func Acceptable(clouds []model.Cloud, apps []model.Application, schedulingResult
 
 	// check every cloud
 	for cloudIndex := 0; cloudIndex < len(deployedClouds); cloudIndex++ {
-		if deployedClouds[cloudIndex].Allocatable.CPU < 0 || deployedClouds[cloudIndex].Allocatable.Memory < 0 || deployedClouds[cloudIndex].Allocatable.Storage < 0 {
+		if deployedClouds[cloudIndex].Allocatable.CPU.LogicalCores < 0 || deployedClouds[cloudIndex].Allocatable.Memory < 0 || deployedClouds[cloudIndex].Allocatable.Storage < 0 {
 			//log.Println("deployedClouds[cloudIndex].Allocatable.CPU", deployedClouds[cloudIndex].Allocatable.CPU)
 			//log.Println("deployedClouds[cloudIndex].Allocatable.Memory", deployedClouds[cloudIndex].Allocatable.Memory)
 			//log.Println("deployedClouds[cloudIndex].Allocatable.Storage", deployedClouds[cloudIndex].Allocatable.Storage)
@@ -63,8 +63,8 @@ func CPUIdleRate(clouds []model.Cloud, apps []model.Application, schedulingResul
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: schedulingResult})
 	var idleCPU, totalCPU float64
 	for i := 0; i < len(clouds); i++ {
-		idleCPU += deployedClouds[i].Allocatable.CPU
-		totalCPU += deployedClouds[i].Capacity.CPU
+		idleCPU += deployedClouds[i].Allocatable.CPU.LogicalCores
+		totalCPU += deployedClouds[i].Capacity.CPU.LogicalCores
 	}
 	return idleCPU / totalCPU
 }

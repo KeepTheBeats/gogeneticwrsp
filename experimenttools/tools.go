@@ -4,7 +4,19 @@ import (
 	"math"
 
 	"github.com/KeepTheBeats/routing-algorithms/random"
+
+	"gogeneticwrsp/model"
 )
+
+// randomly choose a CPU from some CPUs
+func chooseResCPU() model.CPUResource {
+	cpu := cpuToChoose[random.RandomInt(0, len(cpuToChoose)-1)]
+	cpuRes := model.CPUResource{
+		LogicalCores: cpu.logicalCores,
+		BaseClock:    cpu.baseClock,
+	}
+	return cpuRes
+}
 
 // CPU logical cores,
 func generateResourceCPU(lowerBound, upperBound, miu, sigma float64, forCapacity bool) float64 {

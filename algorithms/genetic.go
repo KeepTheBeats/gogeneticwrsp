@@ -105,7 +105,7 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 	var overflow bool
 
 	var cpuFitness float64 // fitness about CPU
-	if clouds[chosenCloudIndex].Allocatable.CPU >= 0 {
+	if clouds[chosenCloudIndex].Allocatable.CPU.LogicalCores >= 0 {
 		cpuFitness = 1
 	} else {
 		// CPU is compressible resource in Kubernetes

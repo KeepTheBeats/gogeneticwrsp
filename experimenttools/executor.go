@@ -42,15 +42,12 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	// generate clouds
 	cloudDiffTimes := 2.0 // give clouds different types
 	for i := 0; i < numCloud; i++ {
-		clouds[i].Capacity.CPU = generateResourceCPUCapacity(16, 132)
+		clouds[i].Capacity.CPU = chooseResCPU()
 		clouds[i].Capacity.Memory = generateResourceMemoryStorageCapacity(math.Pow(2, 30), math.Pow(2, 36))
 		clouds[i].Capacity.Storage = generateResourceMemoryStorageCapacity(math.Pow(2, 32), math.Pow(2, 39))
 		clouds[i].Capacity.NetLatency = generateResourceNetLatency(0, 4, 2, 2)
 
 		// give clouds different types
-		if i <= numCloud/4 {
-			clouds[i].Capacity.CPU /= cloudDiffTimes
-		}
 		if i > numCloud/4 && i <= numCloud/2 {
 			clouds[i].Capacity.Memory /= cloudDiffTimes
 		}

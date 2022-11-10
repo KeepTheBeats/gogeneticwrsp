@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+func TestInnerChooseResCPU(t *testing.T) {
+	fmt.Println("Generate 40 CPU:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(chooseResCPU())
+	}
+}
+
 func TestInnerGenerateResourceCPU(t *testing.T) {
 	fmt.Println("Generate 40 CPU resources for requests:")
 	for i := 0; i < 40; i++ {
@@ -20,11 +27,11 @@ func TestInnerGenerateResourceCPU(t *testing.T) {
 func TestInnerGenerateResourceMemoryStorageCapacity(t *testing.T) {
 	fmt.Println("Generate 40 Memory resources for capacities:")
 	for i := 0; i < 40; i++ {
-		fmt.Println(generateResourceMemoryStorageCapacity(34, 39.9, 36, 2)/math.Pow(2, 30), "GiB")
+		fmt.Println(generateResourceMemoryStorageCapacity(math.Pow(2, 34), math.Pow(2, 39.9))/math.Pow(2, 30), "GiB")
 	}
 	fmt.Println("Generate 40 Storage resources for capacities:")
 	for i := 0; i < 40; i++ {
-		fmt.Println(generateResourceMemoryStorageCapacity(39, 44.9, 41, 2)/math.Pow(2, 30), "GiB")
+		fmt.Println(generateResourceMemoryStorageCapacity(math.Pow(2, 39), math.Pow(2, 44.9))/math.Pow(2, 30), "GiB")
 	}
 }
 
