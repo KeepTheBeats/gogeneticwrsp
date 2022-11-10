@@ -48,7 +48,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 			}
 		}
 		// increase the possibility of rejecting
-		originalLen := len(selectableCloudsForApps[i]) - 1
+		originalLen := len(selectableCloudsForApps[i]) - 1 // how many selectable clouds except for "rejecting"
 		for j := 0; j < originalLen-1; j++ {
 			selectableCloudsForApps[i] = append(selectableCloudsForApps[i], len(clouds))
 		}
@@ -324,7 +324,7 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 		// the best chromosome until now;
 		// if we directly use "=", g.BestUntilNow may be changed by strange reasons.
 		copy(g.BestUntilNow, population[bestFitnessInThisIterationIndex])
-		// the best fitness record;
+		// the best fitness record in all iterations until now;
 		g.FitnessRecordBestUntilNow = append(g.FitnessRecordBestUntilNow, bestFitnessInThisIteration)
 		// the iteration during which the g.BestUntilNow is updated
 		// len(g.FitnessRecordIterationBest)-1 is the current iteration number, there are IterationCount+1 iterations in total
