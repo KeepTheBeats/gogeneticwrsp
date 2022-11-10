@@ -21,7 +21,7 @@ func main() {
 	var numCloud, numApp int = 10, 70
 
 	// generate clouds and apps, and write to files
-	//experimenttools.GenerateCloudsApps(numCloud, numApp)
+	experimenttools.GenerateCloudsApps(numCloud, numApp)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
