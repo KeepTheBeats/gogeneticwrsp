@@ -42,7 +42,7 @@ func RandomFitSchedule(clouds []model.Cloud, apps []model.Application) []int {
 
 		for len(untried) > 0 {
 			cloudIndex := random.RandomInt(0, len(untried)-1) // cloudIndex in untried
-			if clouds[untried[cloudIndex]].Allocatable.NetLatency > apps[undeployed[appIndex]].Requests.NetLatency {
+			if clouds[untried[cloudIndex]].Allocatable.NetLatency > apps[undeployed[appIndex]].SvcReq.NetLatency {
 				untried = append(untried[:cloudIndex], untried[cloudIndex+1:]...)
 				continue
 			}

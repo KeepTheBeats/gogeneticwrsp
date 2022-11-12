@@ -64,25 +64,22 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	// generate applications
 	appDiffTimes := 2.0 // give clouds different types
 	for i := 0; i < numApp; i++ {
-		apps[i].Requests.CPU = generateResourceCPU(1, 10, 3, 5, false)
-		apps[i].Requests.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
+		apps[i].SvcReq.CPUClock = generateSvcCPU()
+		apps[i].SvcReq.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
 
-		apps[i].Requests.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
-		apps[i].Requests.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
+		apps[i].SvcReq.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
+		apps[i].SvcReq.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
 		apps[i].Priority = generatePriority(100, 65535.9, 150, 300)
 
 		// give applications different types
-		if i <= numApp/4 {
-			apps[i].Requests.CPU *= appDiffTimes
-		}
 		if i > numApp/4 && i <= numApp/2 {
-			apps[i].Requests.Memory *= appDiffTimes
+			apps[i].SvcReq.Memory *= appDiffTimes
 		}
 		if i > numApp/2 && i <= int(float64(numApp)*0.75) {
-			apps[i].Requests.Storage *= appDiffTimes
+			apps[i].SvcReq.Storage *= appDiffTimes
 		}
 		if i > int(float64(numApp)*0.75) {
-			apps[i].Requests.NetLatency /= appDiffTimes
+			apps[i].SvcReq.NetLatency /= appDiffTimes
 		}
 	}
 
@@ -178,7 +175,7 @@ func OneTimeExperiment(clouds []model.Cloud, apps []model.Application) {
 	}
 
 	for _, experimenter := range experimenters {
-		log.Println(experimenter.Name+", fitness:", algorithms.Fitness(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "CPU Idle Rate:", algorithms.CPUIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Memory Idle Rate:", algorithms.MemoryIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Storage Idle Rate:", algorithms.StorageIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Total Accepted Priority:", algorithms.AcceptedPriority(clouds, apps, experimenter.ExperimentSolution.SchedulingResult))
+		log.Println(experimenter.Name+", fitness:", algorithms.Fitness(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "CPUClock Idle Rate:", algorithms.CPUIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Memory Idle Rate:", algorithms.MemoryIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Storage Idle Rate:", algorithms.StorageIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Total Accepted Priority:", algorithms.AcceptedPriority(clouds, apps, experimenter.ExperimentSolution.SchedulingResult))
 		if v, ok := experimenter.ExperimentAlgorithm.(*algorithms.Genetic); ok {
 			log.Println("Got Iteration:", v.BestUntilNowUpdateIterations[len(v.BestUntilNowUpdateIterations)-1], v.BestAcceptableUntilNowUpdateIterations[len(v.BestAcceptableUntilNowUpdateIterations)-1])
 		}
@@ -301,10 +298,12 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		MCASGARecorder.AcceptedPriorityRateRecords = append(MCASGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, currentApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, currentApps, currentSolution.SchedulingResult)))
 	}
 
+	log.Println("MCASGA solution:", currentSolution.SchedulingResult)
+
 	// output csv files
 	generateCsvFunc := func(recorder ContinuousHelper) [][]string {
 		var csvContent [][]string
-		csvContent = append(csvContent, []string{"Number of Applications", "CPU Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Application Acceptance Rate"})
+		csvContent = append(csvContent, []string{"Number of Applications", "CPUClock Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Application Acceptance Rate"})
 		for i := 0; i < len(recorder.CPUIdleRecords); i++ {
 			csvContent = append(csvContent, []string{fmt.Sprintf("%d", i+1), fmt.Sprintf("%f", recorder.CPUIdleRecords[i]), fmt.Sprintf("%f", recorder.MemoryIdleRecords[i]), fmt.Sprintf("%f", recorder.StorageIdleRecords[i]), fmt.Sprintf("%f", recorder.AcceptedPriorityRateRecords[i])})
 		}
@@ -352,7 +351,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		}
 
 		graph := chart.Chart{
-			Title: "CPU Idle Rate",
+			Title: "CPUClock Idle Rate",
 			XAxis: chart.XAxis{
 				Name:      "Number of Applications",
 				NameStyle: chart.StyleShow(),
@@ -363,7 +362,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 			},
 			YAxis: chart.YAxis{
 				AxisType:  chart.YAxisSecondary,
-				Name:      "CPU Idle Rate",
+				Name:      "CPUClock Idle Rate",
 				NameStyle: chart.StyleShow(),
 				Style:     chart.StyleShow(),
 			},

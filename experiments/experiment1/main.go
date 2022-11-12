@@ -18,7 +18,7 @@ func main() {
 	// set the log to show line number and file name
 	log.SetFlags(0 | log.Lshortfile)
 
-	var numCloud, numApp int = 10, 70
+	var numCloud, numApp int = 7, 70
 
 	// generate clouds and apps, and write to files
 	experimenttools.GenerateCloudsApps(numCloud, numApp)

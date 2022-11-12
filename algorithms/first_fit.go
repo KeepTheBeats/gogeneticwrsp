@@ -27,7 +27,7 @@ func FirstFitSchedule(clouds []model.Cloud, apps []model.Application) []int {
 	// For every app in order, choose the first cloud that can meet its requirements
 	for i := 0; i < len(apps); i++ {
 		for j := 0; j < len(clouds); j++ {
-			if clouds[j].Allocatable.NetLatency > apps[i].Requests.NetLatency {
+			if clouds[j].Allocatable.NetLatency > apps[i].SvcReq.NetLatency {
 				continue
 			}
 			schedulingResult[i] = j

@@ -43,7 +43,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 	for i := 0; i < len(apps); i++ {
 		selectableCloudsForApps[i] = append(selectableCloudsForApps[i], len(clouds))
 		for j := 0; j < len(clouds); j++ {
-			if clouds[j].Allocatable.NetLatency <= apps[i].Requests.NetLatency {
+			if clouds[j].Allocatable.NetLatency <= apps[i].SvcReq.NetLatency {
 				selectableCloudsForApps[i] = append(selectableCloudsForApps[i], j)
 			}
 		}
@@ -104,15 +104,15 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 	var subFitness []float64
 	var overflow bool
 
-	var cpuFitness float64 // fitness about CPU
+	var cpuFitness float64 // fitness about CPUClock
 	if clouds[chosenCloudIndex].Allocatable.CPU.LogicalCores >= 0 {
 		cpuFitness = 1
 	} else {
-		// CPU is compressible resource in Kubernetes
-		//overflowRate := clouds[chosenCloudIndex].Capacity.CPU / ((0 - clouds[chosenCloudIndex].Allocatable.CPU) + clouds[chosenCloudIndex].Capacity.CPU)
+		// CPUClock is compressible resource in Kubernetes
+		//overflowRate := clouds[chosenCloudIndex].Capacity.CPUClock / ((0 - clouds[chosenCloudIndex].Allocatable.CPUClock) + clouds[chosenCloudIndex].Capacity.CPUClock)
 		cpuFitness = -1
 		overflow = true
-		// even CPU is compressible, I think we still should not allow it to overflow
+		// even CPUClock is compressible, I think we still should not allow it to overflow
 	}
 	subFitness = append(subFitness, cpuFitness)
 
@@ -199,7 +199,7 @@ func InitializeAcceptableChromosome(clouds []model.Cloud, apps []model.Applicati
 	for len(undeployed) > 0 {
 		appIndex := random.RandomInt(0, len(undeployed)-1)
 		for i := 0; i < len(clouds); i++ {
-			if clouds[i].Allocatable.NetLatency > apps[undeployed[appIndex]].Requests.NetLatency {
+			if clouds[i].Allocatable.NetLatency > apps[undeployed[appIndex]].SvcReq.NetLatency {
 				continue
 			}
 			chromosome[undeployed[appIndex]] = i

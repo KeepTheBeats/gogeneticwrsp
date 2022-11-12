@@ -14,7 +14,7 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 10, 70
+	var numCloud, numApp int = 7, 70
 
 	// generate clouds and apps, and write to files
 	experimenttools.GenerateCloudsApps(numCloud, numApp)

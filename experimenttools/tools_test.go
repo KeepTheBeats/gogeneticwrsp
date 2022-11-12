@@ -6,10 +6,30 @@ import (
 	"testing"
 )
 
+func TestPrintChooseResCPU(t *testing.T) {
+	for i := 0; i < len(cpuToChoose); i++ {
+		fmt.Println(cpuToChoose[i].baseClock * cpuToChoose[i].logicalCores)
+	}
+}
+
 func TestInnerChooseResCPU(t *testing.T) {
-	fmt.Println("Generate 40 CPU:")
+	fmt.Println("Generate 40 CPUClock:")
 	for i := 0; i < 40; i++ {
 		fmt.Println(chooseResCPU())
+	}
+}
+
+func TestInnerGenerateTaskCPU(t *testing.T) {
+	fmt.Println("Generate 40 task CPU:")
+	for i := 0; i < 40; i++ {
+		fmt.Printf("%gG cycles\n", generateTaskCPU()/1024/1024/1024)
+	}
+}
+
+func TestInnerGenerateSvcCPU(t *testing.T) {
+	fmt.Println("Generate 40 service CPU:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(generateSvcCPU())
 	}
 }
 

@@ -13,8 +13,15 @@ type CPUResource struct {
 	BaseClock    float64 `json:"baseClock"`    // unit GHz
 }
 
-type AppResources struct {
-	CPU        float64 `json:"cpu"`        // unit number of logical cores
+type ServiceResources struct {
+	CPUClock   float64 `json:"cpuClock"`   // unit GHz
+	Memory     float64 `json:"memory"`     // unit Byte (B)
+	Storage    float64 `json:"storage"`    // unit Byte (B)
+	NetLatency float64 `json:"netLatency"` // unit millisecond (ms)
+}
+
+type TaskResources struct {
+	CPUCycle   float64 `json:"cpuCycle"`   // unit number of CPU cycles needed to execute the task
 	Memory     float64 `json:"memory"`     // unit Byte (B)
 	Storage    float64 `json:"storage"`    // unit Byte (B)
 	NetLatency float64 `json:"netLatency"` // unit millisecond (ms)

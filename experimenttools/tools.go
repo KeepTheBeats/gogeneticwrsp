@@ -8,7 +8,7 @@ import (
 	"gogeneticwrsp/model"
 )
 
-// randomly choose a CPU from some CPUs
+// randomly choose a CPUClock from some CPUs
 func chooseResCPU() model.CPUResource {
 	cpu := cpuToChoose[random.RandomInt(0, len(cpuToChoose)-1)]
 	cpuRes := model.CPUResource{
@@ -18,15 +18,32 @@ func chooseResCPU() model.CPUResource {
 	return cpuRes
 }
 
-// CPU logical cores,
+// generate CPU cycles needed by a task
+func generateTaskCPU() float64 {
+	var CPUCycle float64
+	lowerBound, upperBound, miu, sigma := 129024000.00, 578604236800.00, 51419176466.20, 125585987435.47
+	// from parameters in several related works
+	CPUCycle = random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
+	return CPUCycle
+}
+
+// generate CPU clock that should be reserved for a Service
+func generateSvcCPU() float64 {
+	var CPUClock float64
+	lowerBound, upperBound, miu, sigma := 1.0, 14.80, 3.91, 3.46 // from parameters in several related works
+	CPUClock = random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
+	return CPUClock
+}
+
+// CPUClock logical cores,
 func generateResourceCPU(lowerBound, upperBound, miu, sigma float64, forCapacity bool) float64 {
 	raw_cores := random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
 	if !forCapacity {
 		return raw_cores
 	}
-	// Normally, the number of CPU physical cores is a multiple of 2,
+	// Normally, the number of CPUClock physical cores is a multiple of 2,
 	// and normally, every physical core has 2 logical cores,
-	// so normally, the number of CPU logical cores is a multiple of 4.
+	// so normally, the number of CPUClock logical cores is a multiple of 4.
 	multiple_of_4_cores := int(raw_cores/4) * 4
 	return float64(multiple_of_4_cores)
 }
