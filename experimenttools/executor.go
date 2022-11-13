@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/KeepTheBeats/routing-algorithms/random"
 	"github.com/wcharczuk/go-chart"
 	"go/build"
 	"gogeneticwrsp/algorithms"
@@ -62,25 +63,52 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	}
 
 	// generate applications
+	var taskProportion float64 = random.RandomFloat64(0.1, 0.9)
+	var lastTaskIdx int = int(float64(numApp)*taskProportion) - 1
+	log.Println("taskProportion", taskProportion)
+	log.Println("lastTaskIdx", lastTaskIdx)
+
 	appDiffTimes := 2.0 // give clouds different types
 	for i := 0; i < numApp; i++ {
-		apps[i].SvcReq.CPUClock = generateSvcCPU()
-		apps[i].SvcReq.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
+		if i <= lastTaskIdx {
+			apps[i].IsTask = true
+			apps[i].TaskReq.CPUCycle = generateTaskCPU()
 
-		apps[i].SvcReq.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
-		apps[i].SvcReq.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
+			apps[i].TaskReq.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
+			apps[i].TaskReq.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
+			apps[i].TaskReq.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
+
+			// give applications different types
+			if i > numApp/4 && i <= numApp/2 {
+				apps[i].TaskReq.Memory *= appDiffTimes
+			}
+			if i > numApp/2 && i <= int(float64(numApp)*0.75) {
+				apps[i].TaskReq.Storage *= appDiffTimes
+			}
+			if i > int(float64(numApp)*0.75) {
+				apps[i].TaskReq.NetLatency /= appDiffTimes
+			}
+
+		} else {
+			apps[i].IsTask = false
+			apps[i].SvcReq.CPUClock = generateSvcCPU()
+			apps[i].SvcReq.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
+			apps[i].SvcReq.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
+			apps[i].SvcReq.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
+
+			// give applications different types
+			if i > numApp/4 && i <= numApp/2 {
+				apps[i].SvcReq.Memory *= appDiffTimes
+			}
+			if i > numApp/2 && i <= int(float64(numApp)*0.75) {
+				apps[i].SvcReq.Storage *= appDiffTimes
+			}
+			if i > int(float64(numApp)*0.75) {
+				apps[i].SvcReq.NetLatency /= appDiffTimes
+			}
+		}
+
 		apps[i].Priority = generatePriority(100, 65535.9, 150, 300)
-
-		// give applications different types
-		if i > numApp/4 && i <= numApp/2 {
-			apps[i].SvcReq.Memory *= appDiffTimes
-		}
-		if i > numApp/2 && i <= int(float64(numApp)*0.75) {
-			apps[i].SvcReq.Storage *= appDiffTimes
-		}
-		if i > int(float64(numApp)*0.75) {
-			apps[i].SvcReq.NetLatency /= appDiffTimes
-		}
 	}
 
 	cloudsJson, err := json.Marshal(clouds)

@@ -43,7 +43,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 	for i := 0; i < len(apps); i++ {
 		selectableCloudsForApps[i] = append(selectableCloudsForApps[i], len(clouds))
 		for j := 0; j < len(clouds); j++ {
-			if clouds[j].Allocatable.NetLatency <= apps[i].SvcReq.NetLatency {
+			if MeetNetLatency(clouds[j], apps[i]) {
 				selectableCloudsForApps[i] = append(selectableCloudsForApps[i], j)
 			}
 		}
@@ -199,7 +199,7 @@ func InitializeAcceptableChromosome(clouds []model.Cloud, apps []model.Applicati
 	for len(undeployed) > 0 {
 		appIndex := random.RandomInt(0, len(undeployed)-1)
 		for i := 0; i < len(clouds); i++ {
-			if clouds[i].Allocatable.NetLatency > apps[undeployed[appIndex]].SvcReq.NetLatency {
+			if !MeetNetLatency(clouds[i], apps[undeployed[appIndex]]) {
 				continue
 			}
 			chromosome[undeployed[appIndex]] = i

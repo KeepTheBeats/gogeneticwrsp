@@ -19,10 +19,17 @@ func SimulateDeploy(clouds []model.Cloud, apps []model.Application, solution mod
 			continue
 		}
 
-		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.LogicalCores -= apps[appIndex].SvcReq.CPUClock
-		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Memory -= apps[appIndex].SvcReq.Memory
-		deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Storage -= apps[appIndex].SvcReq.Storage
-		// NetLatency does not need to be subtracted, but if we use NetBandwidth, we need to subtract it.
+		if !apps[appIndex].IsTask { // service
+			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.LogicalCores -= apps[appIndex].SvcReq.CPUClock / deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.BaseClock
+			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Memory -= apps[appIndex].SvcReq.Memory
+			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Storage -= apps[appIndex].SvcReq.Storage
+			// NetLatency does not need to be subtracted, but if we use NetBandwidth, we need to subtract it.
+		} else { // task
+			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.LogicalCores -= (apps[appIndex].TaskReq.CPUCycle / 1024 / 1024 / 1024) / deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.BaseClock
+			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Memory -= apps[appIndex].TaskReq.Memory
+			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Storage -= apps[appIndex].TaskReq.Storage
+			// NetLatency does not need to be subtracted, but if we use NetBandwidth, we need to subtract it.
+		}
 	}
 	return deployedClouds
 }
@@ -55,6 +62,20 @@ func Acceptable(clouds []model.Cloud, apps []model.Application, schedulingResult
 	//	}
 	//}
 
+	return true
+}
+
+// MeetNetLatency check whether a cloud can meet the network latency requirement of an application
+func MeetNetLatency(cloud model.Cloud, app model.Application) bool {
+	if app.IsTask { // task
+		if cloud.Allocatable.NetLatency > app.TaskReq.NetLatency {
+			return false
+		}
+	} else { // service
+		if cloud.Allocatable.NetLatency > app.SvcReq.NetLatency {
+			return false
+		}
+	}
 	return true
 }
 
