@@ -2,6 +2,7 @@ package algorithms
 
 import (
 	"gogeneticwrsp/model"
+	"sort"
 )
 
 // SchedulingAlgorithm is the interface that all algorithms should implement
@@ -19,48 +20,50 @@ func SimulateDeploy(clouds []model.Cloud, apps []model.Application, solution mod
 			continue
 		}
 
-		if !apps[appIndex].IsTask { // service
-			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.LogicalCores -= apps[appIndex].SvcReq.CPUClock / deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.BaseClock
-			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Memory -= apps[appIndex].SvcReq.Memory
-			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Storage -= apps[appIndex].SvcReq.Storage
-			// NetLatency does not need to be subtracted, but if we use NetBandwidth, we need to subtract it.
-		} else { // task
-			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.LogicalCores -= (apps[appIndex].TaskReq.CPUCycle / 1024 / 1024 / 1024) / deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.CPU.BaseClock
-			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Memory -= apps[appIndex].TaskReq.Memory
-			deployedClouds[solution.SchedulingResult[appIndex]].Allocatable.Storage -= apps[appIndex].TaskReq.Storage
-			// NetLatency does not need to be subtracted, but if we use NetBandwidth, we need to subtract it.
-		}
+		// Add this app to the record of running apps on this cloud
+		thisApp := apps[appIndex]
+		deployedClouds[solution.SchedulingResult[appIndex]].RunningApps = append(deployedClouds[solution.SchedulingResult[appIndex]].RunningApps, thisApp)
+
+		// service does not need to subtract resources here, instead, we check it latter
+
+		// task does not need to subtract resources, because:
+		// 1. at one time, only one task will be executed on the cloud;
+		// 2. we will compare the remaining resources with the tasks with highest requirements for acceptance check
 	}
 	return deployedClouds
 }
 
 // Acceptable check whether a chromosome is acceptable
 func Acceptable(clouds []model.Cloud, apps []model.Application, schedulingResult []int) bool {
-	//log.Println(clouds)
-	//log.Println(apps)
-	//log.Println(schedulingResult)
+
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: schedulingResult})
-	//log.Println(deployedClouds)
 
 	// check every cloud
 	for cloudIndex := 0; cloudIndex < len(deployedClouds); cloudIndex++ {
-		if deployedClouds[cloudIndex].Allocatable.CPU.LogicalCores < 0 || deployedClouds[cloudIndex].Allocatable.Memory < 0 || deployedClouds[cloudIndex].Allocatable.Storage < 0 {
-			//log.Println("deployedClouds[cloudIndex].Allocatable.CPUClock", deployedClouds[cloudIndex].Allocatable.CPUClock)
-			//log.Println("deployedClouds[cloudIndex].Allocatable.Memory", deployedClouds[cloudIndex].Allocatable.Memory)
-			//log.Println("deployedClouds[cloudIndex].Allocatable.Storage", deployedClouds[cloudIndex].Allocatable.Storage)
-			return false
+
+		curCPULC := deployedClouds[cloudIndex].Allocatable.CPU.LogicalCores
+		curMem := deployedClouds[cloudIndex].Allocatable.Memory
+		curStorage := deployedClouds[cloudIndex].Allocatable.Storage
+
+		// if a task together with the services with priorities higher than this task uses up any type of resources, this solution cannot be accpeted
+		sort.Sort(model.AppSlice(deployedClouds[cloudIndex].RunningApps))
+		for _, deployedApp := range deployedClouds[cloudIndex].RunningApps {
+			//fmt.Println(deployedApp)
+			//fmt.Println(curCPULC, curMem, curStorage)
+			if deployedApp.IsTask { // task releases resources after completion, so all applications with the priorities lower than it can wait for its completion, so it will not block other applications with lower priorities.
+				if curMem < deployedApp.TaskReq.Memory || curStorage < deployedApp.TaskReq.Storage {
+					return false
+				}
+			} else { // service should take up the resources, so it will block other applications.
+				curCPULC -= deployedApp.SvcReq.CPUClock / deployedClouds[cloudIndex].Allocatable.CPU.BaseClock
+				curMem -= deployedApp.SvcReq.Memory
+				curStorage -= deployedApp.SvcReq.Storage
+				if curCPULC < 0 || curMem < 0 || curStorage < 0 {
+					return false
+				}
+			}
 		}
 	}
-
-	//the check network latency for every application
-	//for appIndex := 0; appIndex < len(schedulingResult); appIndex++ {
-	//	if schedulingResult[appIndex] != len(clouds) {
-	//		if deployedClouds[schedulingResult[appIndex]].Allocatable.NetLatency > apps[appIndex].SvcReq.NetLatency {
-	//			fmt.Println("this reason")
-	//			return false
-	//		}
-	//	}
-	//}
 
 	return true
 }

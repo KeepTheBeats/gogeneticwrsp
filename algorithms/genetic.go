@@ -78,24 +78,102 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 	}
 }
 
-// Fitness calculate the fitness value of this scheduling result
-// There are 2 stages in our algorithm.
-// 1. not strict, to find the big area of the solution, not strict to avoid the local optimal solutions;
-// 2. strict, to find the optimal solution in the area given by stage 1, strict to choose better solutions.
+// Fitness calculate the fitness value of this scheduling result, the fitness values is possibly less than 0
 func Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) float64 {
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
-	var fitnessValue float64
 
+	CalcTaskComplTime(deployedClouds)
+
+	// calculate fitnessParameter X = (totalCycles of all tasks)/(average total CPU clock of all clouds).
+	var totalCycles float64
+	for i := 0; i < len(apps); i++ {
+		if apps[i].IsTask {
+			totalCycles += apps[i].TaskReq.CPUCycle
+		}
+	}
+	var allCPUClock float64
+	for i := 0; i < len(clouds); i++ {
+		allCPUClock += clouds[i].Allocatable.CPU.LogicalCores * clouds[i].Allocatable.CPU.BaseClock * 1024 * 1024 * 1024 //unit Hz
+	}
+	var avgCPUClock float64 = allCPUClock / float64(len(clouds))
+	var fitnessParameter float64 = totalCycles / avgCPUClock
+
+	var fitnessValue float64
 	// the fitnessValue is based on each application
 	for appIndex := 0; appIndex < len(chromosome); appIndex++ {
-		fitnessValue += fitnessOneApp(deployedClouds, apps[appIndex], chromosome[appIndex])
+		fitnessValue += fitnessOneApp(deployedClouds, apps[appIndex], chromosome[appIndex], fitnessParameter)
 	}
 
 	return fitnessValue
 }
 
-// fitness of a single application
-func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
+// CalcTaskComplTime calculate the completion time of all tasks on all clouds
+// slice of Golang is a reference (address/pointer), so we can change the contents in the function
+func CalcTaskComplTime(clouds []model.Cloud) {
+	for cloudIndex := 0; cloudIndex < len(clouds); cloudIndex++ {
+		var totalTaskExecTime float64 // unit: second
+		curCPULC := clouds[cloudIndex].Allocatable.CPU.LogicalCores
+		// do not need to handle memory and storage, because here we do not consider whether this solution is acceptable
+
+		// firstly handle the applications with higher priorities
+		sort.Sort(model.AppSlice(clouds[cloudIndex].RunningApps))
+		for i := 0; i < len(clouds[cloudIndex].RunningApps); i++ {
+			if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
+				execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (curCPULC * clouds[cloudIndex].Allocatable.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
+				totalTaskExecTime += execTime
+				clouds[cloudIndex].RunningApps[i].TaskCompletionTime = totalTaskExecTime
+			} else { // Services take up the resource
+				curCPULC -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].Allocatable.CPU.BaseClock
+			}
+		}
+
+		clouds[cloudIndex].TotalTaskComplTime = totalTaskExecTime
+	}
+}
+
+// fitness of a single application, the fitness values is possibly less than 0
+// the input clouds[chosenCloudIndex].RunningApps should be sorted according to the priority
+func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int, fitnessParameter float64) float64 {
+	if chosenCloudIndex == len(clouds) {
+		return 0
+	}
+
+	totalExecTime := clouds[chosenCloudIndex].TotalTaskComplTime
+	if totalExecTime == 0 {
+		totalExecTime = 1
+	}
+
+	if app.IsTask { // Task: minimize execution time
+		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
+			// find this app in RunningApps of this cloud
+			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
+				thisTaskExecTime := clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
+				// Maxmize ((t-Ta)/t + X/t + Aa) * priority
+				return ((totalExecTime-thisTaskExecTime)/totalExecTime + fitnessParameter/totalExecTime + 1) * float64(app.Priority)
+			}
+		}
+		log.Panicln("Task, cannot find clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx")
+	} else { // Service: maximize execution time
+		thisServiceExecTime := totalExecTime
+		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
+			if clouds[chosenCloudIndex].RunningApps[i].IsTask { // the Tasks with higher priorities should be executed firstly
+				thisServiceExecTime = totalExecTime - clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
+				continue
+			}
+			// find this app in RunningApps of this cloud
+			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
+				// Maximize (tb/t + X/t + Ab) *priority
+				return (thisServiceExecTime/totalExecTime + fitnessParameter/totalExecTime + 1) * float64(app.Priority)
+			}
+		}
+		log.Panicln("Service, cannot find clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx")
+	}
+	log.Panicln("unreachable return 0")
+	return 0
+}
+
+// old-version fitness of a single application
+func fitnessOneAppOld(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
 	// The application is rejected, only set a small fitness, because in some aspects being rejected is better than being deployed incorrectly
 	if chosenCloudIndex == len(clouds) {
 		return 0
@@ -221,12 +299,12 @@ func (g *Genetic) randomSelect(appIndex int) int {
 	return gene
 }
 
-func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Application, population Population, strict bool) Population {
+func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Application, population Population) Population {
 	fitnesses := make([]float64, len(population))
 	cumulativeFitnesses := make([]float64, len(population))
 
 	// calculate the fitness of each chromosome in this population
-	var maxFitness, minFitness float64 = 0, math.MaxFloat64 // record the max and min for standardization
+	var maxFitness, minFitness float64 = -math.MaxFloat64, math.MaxFloat64 // record the max and min for standardization
 	for i := 0; i < len(population); i++ {
 		fitness := Fitness(clouds, apps, population[i])
 
@@ -277,6 +355,7 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 	var bestFitnessInThisIterationIndex int
 	var bestAcceptableFitnessInThisIteration float64 = -1
 	var bestAcceptableFitnessInThisIterationIndex int
+
 	for i := 0; i < g.ChromosomesCount; i++ {
 
 		// roulette-wheel selection
@@ -344,7 +423,7 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 	return newPopulation
 }
 
-func (g *Genetic) crossoverOperator(clouds []model.Cloud, apps []model.Application, population Population, strict bool) Population {
+func (g *Genetic) crossoverOperator(clouds []model.Cloud, apps []model.Application, population Population) Population {
 	if len(apps) <= 1 { // only with at least 2 genes in a chromosome, can we do crossover
 		return population
 	}
@@ -422,7 +501,7 @@ func (g *Genetic) crossoverOperator(clouds []model.Cloud, apps []model.Applicati
 	return newPopulation
 }
 
-func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Application, population Population, strict bool) Population {
+func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Application, population Population) Population {
 	// avoid changing the original population, maybe not needed but for security
 	var copyPopulation Population = make(Population, len(population))
 	copy(copyPopulation, population)
@@ -460,7 +539,7 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 
 	//log.Println("---selection after initialization-------")
 	// there are IterationCount+1 iterations in total, this is the No. 0 iteration
-	currentPopulation := g.selectionOperator(clouds, apps, initPopulation, false) // Iteration No. 0
+	currentPopulation := g.selectionOperator(clouds, apps, initPopulation) // Iteration No. 0
 	//for i, chromosome := range currentPopulation {
 	//	log.Println(i, chromosome)
 	//}
@@ -468,17 +547,17 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 	// No. 1 iteration to No. g.IterationCount iteration
 	for iteration := 1; iteration <= g.IterationCount; iteration++ {
 		//log.Printf("---crossover in iteration %d-------\n", iteration)
-		currentPopulation = g.crossoverOperator(clouds, apps, currentPopulation, false)
+		currentPopulation = g.crossoverOperator(clouds, apps, currentPopulation)
 		//for i, chromosome := range currentPopulation {
 		//	log.Println(i, chromosome)
 		//}
 		//log.Printf("--------mutation in iteration %d-------\n", iteration)
-		currentPopulation = g.mutationOperator(clouds, apps, currentPopulation, false)
+		currentPopulation = g.mutationOperator(clouds, apps, currentPopulation)
 		//for i, chromosome := range currentPopulation {
 		//	log.Println(i, chromosome)
 		//}
 		//log.Printf("--------selection in iteration %d-------\n", iteration)
-		currentPopulation = g.selectionOperator(clouds, apps, currentPopulation, false)
+		currentPopulation = g.selectionOperator(clouds, apps, currentPopulation)
 		//for i, chromosome := range currentPopulation {
 		//	log.Println(i, chromosome)
 		//}

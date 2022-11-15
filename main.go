@@ -14,10 +14,10 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 7, 70
+	var numCloud, numApp int = 10, 40
 
 	// generate clouds and apps, and write to files
-	experimenttools.GenerateCloudsApps(numCloud, numApp)
+	//experimenttools.GenerateCloudsApps(numCloud, numApp)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
@@ -40,7 +40,6 @@ func main() {
 	if err != nil {
 		log.Printf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
 	}
-	log.Println("solution:", solution)
 
 	for i := 0; i < len(geneticAlgorithm.FitnessRecordIterationBest); i++ {
 		log.Printf("Iteration %d: FitnessRecordIterationBest: %f\n", i, geneticAlgorithm.FitnessRecordIterationBest[i])

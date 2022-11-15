@@ -121,3 +121,143 @@ func TestSimulateDeploy(t *testing.T) {
 		assert.Equal(t, testCase.expectedResult, actualResult, fmt.Sprintf("%s: result is not expected", testCase.name))
 	}
 }
+
+func TestAcceptable(t *testing.T) {
+	var apps []model.Application = []model.Application{
+		model.Application{
+			IsTask: false,
+			SvcReq: model.ServiceResources{
+				CPUClock:   50,
+				Memory:     50,
+				Storage:    50,
+				NetLatency: 50,
+			},
+			Priority: 500,
+			AppIdx:   0,
+		},
+		model.Application{
+			IsTask: false,
+			SvcReq: model.ServiceResources{
+				CPUClock:   15,
+				Memory:     15,
+				Storage:    15,
+				NetLatency: 15,
+			},
+			Priority: 1000,
+			AppIdx:   1,
+		},
+		model.Application{
+			IsTask: false,
+			SvcReq: model.ServiceResources{
+				CPUClock:   135,
+				Memory:     135,
+				Storage:    135,
+				NetLatency: 153,
+			},
+			Priority: 750,
+			AppIdx:   2,
+		},
+		model.Application{
+			IsTask: false,
+			SvcReq: model.ServiceResources{
+				CPUClock:   1352,
+				Memory:     1235,
+				Storage:    1325,
+				NetLatency: 1532,
+			},
+			Priority: 751,
+			AppIdx:   3,
+		},
+		model.Application{
+			IsTask: false,
+			SvcReq: model.ServiceResources{
+				CPUClock:   352,
+				Memory:     235,
+				Storage:    325,
+				NetLatency: 532,
+			},
+			Priority: 8751,
+			AppIdx:   4,
+		},
+		model.Application{
+			IsTask: true,
+			TaskReq: model.TaskResources{
+				CPUCycle:   32,
+				Memory:     25,
+				Storage:    35,
+				NetLatency: 52,
+			},
+			Priority: 851,
+			AppIdx:   5,
+		},
+		model.Application{
+			IsTask: true,
+			TaskReq: model.TaskResources{
+				CPUCycle:   832,
+				Memory:     825,
+				Storage:    835,
+				NetLatency: 852,
+			},
+			Priority: 810,
+			AppIdx:   6,
+		},
+		model.Application{
+			IsTask: true,
+			TaskReq: model.TaskResources{
+				CPUCycle:   83,
+				Memory:     82,
+				Storage:    83,
+				NetLatency: 85,
+			},
+			Priority: 111,
+			AppIdx:   7,
+		},
+	}
+
+	var clouds []model.Cloud = []model.Cloud{
+		model.Cloud{
+			Capacity: model.Resources{
+				CPU: model.CPUResource{
+					LogicalCores: 20,
+					BaseClock:    10000,
+				},
+				Memory:     10000,
+				Storage:    10000,
+				NetLatency: 0,
+			},
+			Allocatable: model.Resources{
+				CPU: model.CPUResource{
+					LogicalCores: 20,
+					BaseClock:    10000,
+				},
+				Memory:     10000,
+				Storage:    10000,
+				NetLatency: 0,
+			},
+		},
+		model.Cloud{
+			Capacity: model.Resources{
+				CPU: model.CPUResource{
+					LogicalCores: 45,
+					BaseClock:    10000,
+				},
+				Memory:     10000,
+				Storage:    10000,
+				NetLatency: 0,
+			},
+			Allocatable: model.Resources{
+				CPU: model.CPUResource{
+					LogicalCores: 20,
+					BaseClock:    10000,
+				},
+				Memory:     10000,
+				Storage:    10000,
+				NetLatency: 0,
+			},
+		},
+	}
+
+	var schedulingResult []int = []int{1, 1, 1, 1, 1, 1, 1, 1}
+
+	fmt.Println(Acceptable(clouds, apps, schedulingResult))
+}

@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"gogeneticwrsp/model"
 )
@@ -60,6 +61,8 @@ func GenerateCloudsApps(numCloud, numApp int) {
 		}
 
 		clouds[i].Allocatable = clouds[i].Capacity
+		clouds[i].RunningApps = []model.Application{}
+		clouds[i].UpdateTime = time.Now()
 	}
 
 	// generate applications
@@ -109,6 +112,7 @@ func GenerateCloudsApps(numCloud, numApp int) {
 		}
 
 		apps[i].Priority = generatePriority(100, 65535.9, 150, 300)
+		apps[i].AppIdx = i
 	}
 
 	cloudsJson, err := json.Marshal(clouds)
