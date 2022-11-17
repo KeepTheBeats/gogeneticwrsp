@@ -19,6 +19,13 @@ func TestInnerChooseResCPU(t *testing.T) {
 	}
 }
 
+func TestInnerChooseDepNum(t *testing.T) {
+	fmt.Println("Generate 40 Dependence Number:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(chooseDepNum())
+	}
+}
+
 func TestInnerGenerateTaskCPU(t *testing.T) {
 	fmt.Println("Generate 40 task CPU:")
 	for i := 0; i < 40; i++ {
@@ -30,6 +37,20 @@ func TestInnerGenerateSvcCPU(t *testing.T) {
 	fmt.Println("Generate 40 service CPU:")
 	for i := 0; i < 40; i++ {
 		fmt.Println(generateSvcCPU())
+	}
+}
+
+func TestInnerGenerateResourceRTT(t *testing.T) {
+	fmt.Println("Generate 40 rtt:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(generateResourceRTT())
+	}
+}
+
+func TestInnerGenerateResourceBW(t *testing.T) {
+	fmt.Println("Generate 40 bandwidth:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(generateResourceBW())
 	}
 }
 

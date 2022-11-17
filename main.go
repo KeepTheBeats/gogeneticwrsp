@@ -17,13 +17,12 @@ func main() {
 	var numCloud, numApp int = 10, 40
 
 	// generate clouds and apps, and write to files
-	//experimenttools.GenerateCloudsApps(numCloud, numApp)
+	experimenttools.GenerateCloudsApps(numCloud, numApp)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
 	var apps []model.Application
 	clouds, apps = experimenttools.ReadCloudsApps(numCloud, numApp)
-
 	//for i := 0; i < numCloud; i++ {
 	//	log.Println(clouds[i])
 	//}

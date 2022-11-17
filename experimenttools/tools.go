@@ -1,6 +1,7 @@
 package experimenttools
 
 import (
+	"log"
 	"math"
 
 	"github.com/KeepTheBeats/routing-algorithms/random"
@@ -72,6 +73,55 @@ func generateResourceNetLatency(power10LowerBound, power10UpperBound, miu, sigma
 	power10 := int(random.NormalRandomBM(power10LowerBound, power10UpperBound, miu, sigma))
 	head := random.RandomInt(1, 9)
 	return float64(head) * math.Pow10(power10)
+}
+
+// generate rtt between two clouds or image repository or Architecture Controller
+// I have 78 data from related works and tests, 4 groups:
+// group 1: index [1, 12], lowerBound upperBound miu sigma: 20 40 30 10.44465936
+// group 2: index [13, 24], lowerBound upperBound miu sigma: 110 18000 4488.5 6654.286486
+// group 3: index [25, 36], lowerBound upperBound miu sigma: 0.508 5.571 2.550916667 1.51254905
+// group 3: index [37, 78], lowerBound upperBound miu sigma: 45.186 324.426 181.289619 90.76114479
+func generateResourceRTT() float64 {
+	var rtt float64
+	var lowerBound, upperBound, miu, sigma float64
+	var idx int = random.RandomInt(1, 78)
+	switch {
+	case idx >= 1 && idx <= 12:
+		lowerBound, upperBound, miu, sigma = 20, 40, 30, 10.44465936
+	case idx >= 13 && idx <= 24:
+		lowerBound, upperBound, miu, sigma = 110, 18000, 4488.5, 6654.286486
+	case idx >= 25 && idx <= 36:
+		lowerBound, upperBound, miu, sigma = 0.508, 5.571, 2.550916667, 1.51254905
+	case idx >= 37 && idx <= 78:
+		lowerBound, upperBound, miu, sigma = 45.186, 324.426, 181.289619, 90.76114479
+	default:
+		log.Panicln("generateResourceRTT, unexpected idx:", idx)
+	}
+	rtt = random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
+	return rtt
+}
+
+// generate bandwidth between two clouds or image repository or Architecture Controller
+func generateResourceBW() float64 {
+	var bandwidth float64
+	lowerBound, upperBound, miu, sigma := 0.873, 935.0, 145.2336143, 215.0395931 // from parameters in several related works and tests
+	bandwidth = random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
+	return bandwidth
+}
+
+// choose the number of depended apps of an app
+func chooseDepNum() int {
+	return depNumsToChoose[random.RandomInt(0, len(depNumsToChoose)-1)]
+}
+
+// choose the required bandwidth of apps
+func chooseReqBW() float64 {
+	return reqBwToChoose[random.RandomInt(0, len(reqBwToChoose)-1)]
+}
+
+// choose the required Round trip time of apps
+func chooseReqRTT() float64 {
+	return reqRttToChoose[random.RandomInt(0, len(reqRttToChoose)-1)]
 }
 
 // Priority of application range [100, 65535]

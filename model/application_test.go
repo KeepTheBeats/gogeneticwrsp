@@ -91,6 +91,9 @@ func TestSortApps(t *testing.T) {
 		},
 	}
 
+	var apps2 []Application = make([]Application, len(apps))
+	copy(apps2, apps)
+
 	for i := 0; i < len(apps); i++ {
 		fmt.Println(apps[i])
 	}
@@ -100,6 +103,10 @@ func TestSortApps(t *testing.T) {
 
 	for i := 0; i < len(apps); i++ {
 		fmt.Println(apps[i])
+	}
+	fmt.Println("-------------apps2:---------------")
+	for i := 0; i < len(apps2); i++ {
+		fmt.Println(apps2[i])
 	}
 
 	var sortResult []Application = []Application{
@@ -186,4 +193,60 @@ func TestSortApps(t *testing.T) {
 	}
 
 	assert.Equal(t, apps, sortResult, fmt.Sprintf("result is not expected"))
+}
+
+func TestHaveCirDep(t *testing.T) {
+	var apps []Application = []Application{
+		Application{
+			Depend: []Dependence{
+				Dependence{
+					AppIdx: 1,
+				},
+				Dependence{
+					AppIdx: 2,
+				},
+				Dependence{
+					AppIdx: 3,
+				},
+				Dependence{
+					AppIdx: 4,
+				},
+			},
+			Priority: 200,
+		},
+		Application{
+			Depend: []Dependence{
+				Dependence{
+					AppIdx: 2,
+				},
+				Dependence{
+					AppIdx: 3,
+				},
+			},
+			Priority: 300,
+		},
+		Application{
+			Depend: []Dependence{
+				Dependence{
+					AppIdx: 3,
+				},
+			},
+			Priority: 400,
+		},
+		Application{
+			Depend: []Dependence{
+				Dependence{
+					AppIdx: 4,
+				},
+			},
+			Priority: 500,
+		},
+		Application{
+			Depend:   []Dependence{},
+			Priority: 600,
+		},
+	}
+	if err := DependencyValid(apps); err != nil {
+		t.Errorf("DependencyValid error: %s", err.Error())
+	}
 }

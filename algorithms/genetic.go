@@ -38,6 +38,9 @@ type Genetic struct {
 }
 
 func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability float64, mutationProbability float64, stopNoUpdateIteration int, initFunc func([]model.Cloud, []model.Application) []int, clouds []model.Cloud, apps []model.Application) *Genetic {
+	if err := model.DependencyValid(apps); err != nil {
+		log.Panicf("model.DependencyValid(apps), err: %s", err.Error())
+	}
 
 	selectableCloudsForApps := make([][]int, len(apps))
 	for i := 0; i < len(apps); i++ {

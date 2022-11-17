@@ -255,3 +255,9 @@ var amdEpyc7002Series []cpuProcessor = []cpuProcessor{
 		baseClock:    3.1,
 	},
 }
+
+var (
+	depNumsToChoose []int     = []int{1, 2, 5, 3, 1, 1, 1, 2}
+	reqBwToChoose   []float64 = []float64{0.0098, 0.098, 1.0, 20.0, 1.0, 204.8, 2048.0, 10.0, 100.0} // unit Mb/s
+	reqRttToChoose  []float64 = []float64{2000, 2000, 2, 1000, 10, 20, 10, 10, 1}                    // unit ms
+)

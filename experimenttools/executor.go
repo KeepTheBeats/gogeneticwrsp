@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -60,7 +61,27 @@ func GenerateCloudsApps(numCloud, numApp int) {
 			clouds[i].Capacity.NetLatency *= cloudDiffTimes
 		}
 
-		clouds[i].Allocatable = clouds[i].Capacity
+		// network conditions
+		clouds[i].Capacity.NetCondClouds = make([]model.NetworkCondition, numCloud)
+		for j := 0; j < numCloud; j++ {
+			if i == j {
+				// every cloud has infinite bandwidth and zero RTT between itself, so for some apps with very high requirements, they can be deployed on the same cloud.
+				clouds[i].Capacity.NetCondClouds[j].RTT = 0
+				clouds[i].Capacity.NetCondClouds[j].DownBw = math.MaxFloat64
+			} else {
+				clouds[i].Capacity.NetCondClouds[j].RTT = generateResourceRTT()
+				clouds[i].Capacity.NetCondClouds[j].DownBw = generateResourceBW()
+			}
+		}
+		clouds[i].Capacity.NetCondImage.RTT = generateResourceRTT()
+		clouds[i].Capacity.NetCondImage.DownBw = generateResourceBW()
+		clouds[i].Capacity.NetCondController.RTT = generateResourceRTT()
+		clouds[i].Capacity.NetCondController.DownBw = generateResourceBW()
+		clouds[i].Capacity.UpBwImage = generateResourceBW()
+		clouds[i].Capacity.UpBwController = generateResourceBW()
+
+		clouds[i].Allocatable = model.ResCopy(clouds[i].Capacity)
+
 		clouds[i].RunningApps = []model.Application{}
 		clouds[i].UpdateTime = time.Now()
 	}
@@ -115,10 +136,60 @@ func GenerateCloudsApps(numCloud, numApp int) {
 		apps[i].AppIdx = i
 	}
 
+	// generate dependence
+	var orderedApps []model.Application = make([]model.Application, numApp)
+	copy(orderedApps, apps)
+	sort.Sort(model.AppSlice(orderedApps))
+	for i := 0; i < numApp; i++ {
+		// randomly choose whether this app depends on others
+		// according to the related work, in 14 apps there are 8 depending on others
+		if random.RandomInt(1, 14) > 8 {
+			continue
+		}
+
+		// An app can only depend on apps with higher priorities
+		var CurOrderedIdx int
+		for j := 0; j < len(orderedApps); j++ {
+			// find current app in the ordered apps, and the apps before it can be dependent
+			if orderedApps[j].AppIdx == i {
+				CurOrderedIdx = j
+				break
+			}
+		}
+		if CurOrderedIdx == 0 {
+			continue // current app has the highest priority, so no dependence
+		}
+		// In orderedApps, the idx [0,CurOrderedIdx-1] can be dependent, because they have higher priorities than the current one
+
+		// how many dependent apps
+		depNum := chooseDepNum()
+		if depNum > CurOrderedIdx {
+			depNum = CurOrderedIdx
+		}
+
+		// picked depNum apps from orderedApps[:CurOrderedIdx]
+		var tmpForPick []int = make([]int, CurOrderedIdx)
+		var pickedOrderedIdxes []int = random.RandomPickN(tmpForPick, depNum)
+		var depIdxes []int = make([]int, depNum) // These are dependent indexes
+		for j := 0; j < depNum; j++ {
+			depIdxes[j] = orderedApps[pickedOrderedIdxes[j]].AppIdx
+		}
+
+		// generate every dependence for the current app
+		for j := 0; j < len(depIdxes); j++ {
+			apps[i].Depend = append(apps[i].Depend, model.Dependence{
+				AppIdx: depIdxes[j],
+				DownBw: chooseReqBW(),
+				UpBw:   chooseReqBW(),
+				RTT:    chooseReqRTT(),
+			})
+		}
+
+	}
+
 	cloudsJson, err := json.Marshal(clouds)
 	if err != nil {
 		log.Fatalln("json.Marshal(clouds) error:", err.Error())
-
 	}
 	appsJson, err := json.Marshal(apps)
 	if err != nil {
