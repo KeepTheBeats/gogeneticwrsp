@@ -62,23 +62,43 @@ func Acceptable(clouds []model.Cloud, apps []model.Application, schedulingResult
 					return false
 				}
 			}
+
+			// network bandwidths and RTT
+			for _, dependence := range deployedApp.Depend {
+				dependentCloudIdx := schedulingResult[dependence.AppIdx]
+				if dependentCloudIdx == len(deployedClouds) {
+					return false // the dependent app is rejected
+				}
+
+				// cloudIndex: current cloud
+				// dependentCloudIdx: dependent cloud
+
+				// check RTT requirements
+				if deployedClouds[cloudIndex].Allocatable.NetCondClouds[dependentCloudIdx].RTT > dependence.RTT {
+					return false
+				}
+
+				// check downstream bandwidth requirements
+				if deployedApp.IsTask {
+					if deployedClouds[cloudIndex].Allocatable.NetCondClouds[dependentCloudIdx].DownBw < dependence.DownBw {
+						return false
+					}
+				} else {
+					deployedClouds[cloudIndex].Allocatable.NetCondClouds[dependentCloudIdx].DownBw -= dependence.DownBw
+					if deployedClouds[cloudIndex].Allocatable.NetCondClouds[dependentCloudIdx].DownBw < 0 {
+						return false
+					}
+				}
+			}
 		}
 	}
 
 	return true
 }
 
-// MeetNetLatency check whether a cloud can meet the network latency requirement of an application
-func MeetNetLatency(cloud model.Cloud, app model.Application) bool {
-	if app.IsTask { // task
-		if cloud.Allocatable.NetLatency > app.TaskReq.NetLatency {
-			return false
-		}
-	} else { // service
-		if cloud.Allocatable.NetLatency > app.SvcReq.NetLatency {
-			return false
-		}
-	}
+// CloudMeetApp check whether a cloud can meet an application
+func CloudMeetApp(cloud model.Cloud, app model.Application) bool {
+
 	return true
 }
 

@@ -87,7 +87,8 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	}
 
 	// generate applications
-	var taskProportion float64 = random.RandomFloat64(0.1, 0.9)
+	//var taskProportion float64 = random.RandomFloat64(0.1, 0.9)
+	var taskProportion float64 = 0.5
 	var lastTaskIdx int = int(float64(numApp)*taskProportion) - 1
 	log.Println("taskProportion", taskProportion)
 	log.Println("lastTaskIdx", lastTaskIdx)
@@ -133,6 +134,8 @@ func GenerateCloudsApps(numCloud, numApp int) {
 		}
 
 		apps[i].Priority = generatePriority(100, 65535.9, 150, 300)
+		apps[i].InputDataSize = generateInputSize()
+		apps[i].ImageSize = generateImageSize()
 		apps[i].AppIdx = i
 	}
 
@@ -156,6 +159,12 @@ func GenerateCloudsApps(numCloud, numApp int) {
 				break
 			}
 		}
+
+		// make sure that the priorities in orderedApps before CurOrderedIdx are higher than CurOrderedIdx's priority (cannot be equal)
+		for CurOrderedIdx-1 > 0 && orderedApps[CurOrderedIdx].Priority == orderedApps[CurOrderedIdx-1].Priority {
+			CurOrderedIdx--
+		}
+
 		if CurOrderedIdx == 0 {
 			continue // current app has the highest priority, so no dependence
 		}

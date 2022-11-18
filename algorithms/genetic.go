@@ -46,7 +46,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 	for i := 0; i < len(apps); i++ {
 		selectableCloudsForApps[i] = append(selectableCloudsForApps[i], len(clouds))
 		for j := 0; j < len(clouds); j++ {
-			if MeetNetLatency(clouds[j], apps[i]) {
+			if CloudMeetApp(clouds[j], apps[i]) {
 				selectableCloudsForApps[i] = append(selectableCloudsForApps[i], j)
 			}
 		}
@@ -84,59 +84,110 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 // Fitness calculate the fitness value of this scheduling result, the fitness values is possibly less than 0
 func Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) float64 {
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
-
-	CalcTaskComplTime(deployedClouds)
-
-	// calculate fitnessParameter X = (totalCycles of all tasks)/(average total CPU clock of all clouds).
-	var totalCycles float64
-	for i := 0; i < len(apps); i++ {
-		if apps[i].IsTask {
-			totalCycles += apps[i].TaskReq.CPUCycle
-		}
-	}
-	var allCPUClock float64
-	for i := 0; i < len(clouds); i++ {
-		allCPUClock += clouds[i].Allocatable.CPU.LogicalCores * clouds[i].Allocatable.CPU.BaseClock * 1024 * 1024 * 1024 //unit Hz
-	}
-	var avgCPUClock float64 = allCPUClock / float64(len(clouds))
-	var fitnessParameter float64 = totalCycles / avgCPUClock
+	var appsCopy []model.Application = make([]model.Application, len(apps))
+	copy(appsCopy, apps)
+	CalcStartComplTime(deployedClouds, appsCopy, chromosome)
+	//for i := 0; i < len(deployedClouds); i++ {
+	//	sort.Sort(model.AppSlice(deployedClouds[i].RunningApps))
+	//	fmt.Println("Cloud:", i)
+	//	for j := 0; j < len(deployedClouds[i].RunningApps); j++ {
+	//		fmt.Println(deployedClouds[i].RunningApps[j].IsTask, deployedClouds[i].RunningApps[j].StartTime, deployedClouds[i].RunningApps[j].TaskCompletionTime)
+	//	}
+	//}
+	//time.Sleep(101 * time.Second)
 
 	var fitnessValue float64
 	// the fitnessValue is based on each application
 	for appIndex := 0; appIndex < len(chromosome); appIndex++ {
-		fitnessValue += fitnessOneApp(deployedClouds, apps[appIndex], chromosome[appIndex], fitnessParameter)
+		fitnessValue += fitnessOneApp(deployedClouds, apps[appIndex], chromosome[appIndex])
 	}
 
 	return fitnessValue
 }
 
-// CalcTaskComplTime calculate the completion time of all tasks on all clouds
+// CalcStartComplTime calculate the completion time of all tasks on all clouds, and the start time of all applications
 // slice of Golang is a reference (address/pointer), so we can change the contents in the function
-func CalcTaskComplTime(clouds []model.Cloud) {
-	for cloudIndex := 0; cloudIndex < len(clouds); cloudIndex++ {
-		var totalTaskExecTime float64 // unit: second
-		curCPULC := clouds[cloudIndex].Allocatable.CPU.LogicalCores
-		// do not need to handle memory and storage, because here we do not consider whether this solution is acceptable
-
-		// firstly handle the applications with higher priorities
-		sort.Sort(model.AppSlice(clouds[cloudIndex].RunningApps))
+func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) {
+	// initialization
+	for i := 0; i < len(clouds); i++ {
+		clouds[i].TotalTaskComplTime = 0
+		clouds[i].Allocatable.CPU.LogicalCores = clouds[i].Capacity.CPU.LogicalCores
+	}
+	// save the original order of apps
+	unorderedApps := make([]model.Application, len(apps))
+	copy(unorderedApps, apps)
+	// traverse apps from high priority to low priority
+	sort.Sort(model.AppSlice(apps))
+	for k := 0; k < len(apps); k++ {
+		// In this chromosome, this app is scheduled on this cloud
+		cloudIndex := chromosome[apps[k].AppIdx]
+		if cloudIndex == len(clouds) {
+			continue // this app is rejected
+		}
 		for i := 0; i < len(clouds[cloudIndex].RunningApps); i++ {
-			if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
-				execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (curCPULC * clouds[cloudIndex].Allocatable.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
-				totalTaskExecTime += execTime
-				clouds[cloudIndex].RunningApps[i].TaskCompletionTime = totalTaskExecTime
-			} else { // Services take up the resource
-				curCPULC -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].Allocatable.CPU.BaseClock
+			// find the app in the RunningApps of this cloud
+			if clouds[cloudIndex].RunningApps[i].AppIdx == apps[k].AppIdx {
+				// the start time of every app should be after all its dependent apps
+				// apps is sorted by priority, and an app can only depend on others with higher priorities, so all of this app's dependence in unorderedApps already have the StartTime and TaskCompletionTime
+				latestStartTime := clouds[cloudIndex].TotalTaskComplTime
+				for j := 0; j < len(clouds[cloudIndex].RunningApps[i].Depend); j++ {
+					if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].IsTask { // should be after the completion time of every dependent task
+						if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].TaskCompletionTime > latestStartTime {
+							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].TaskCompletionTime
+						}
+					} else { // should be after the start time of every dependent service
+						if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].StartTime > latestStartTime {
+							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].StartTime
+						}
+					}
+				}
+				clouds[cloudIndex].TotalTaskComplTime = latestStartTime
+				clouds[cloudIndex].RunningApps[i].StartTime = latestStartTime
+				unorderedApps[apps[k].AppIdx].StartTime = latestStartTime
+
+				// calculate image pulling time, 1 Byte = 8 bits
+				imagePullTime := (clouds[cloudIndex].RunningApps[i].ImageSize*8)/(clouds[cloudIndex].Allocatable.NetCondImage.DownBw*1024*1024) + (clouds[cloudIndex].Allocatable.NetCondImage.RTT / 1000) // unit: second
+				// calculate time of transmitting data from Architecture Controller to this cloud, 1 Byte = 8 bits
+				dataInputTime := (clouds[cloudIndex].RunningApps[i].InputDataSize*8)/(clouds[cloudIndex].Allocatable.NetCondController.DownBw*1024*1024) + (clouds[cloudIndex].Allocatable.NetCondController.RTT / 1000) // unit: second
+
+				if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
+					// task execution time
+					execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (clouds[cloudIndex].Allocatable.CPU.LogicalCores * clouds[cloudIndex].Allocatable.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
+					// a task should consume the three parts of time
+					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + execTime
+					clouds[cloudIndex].RunningApps[i].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
+					unorderedApps[apps[k].AppIdx].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
+				} else { // Services take up the resource
+					// take up cpu
+					clouds[cloudIndex].Allocatable.CPU.LogicalCores -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].Allocatable.CPU.BaseClock
+
+					// a service should consume the two parts of time
+					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime
+				}
+
+				break
 			}
 		}
-
-		clouds[cloudIndex].TotalTaskComplTime = totalTaskExecTime
 	}
+
+	// restore
+	for i := 0; i < len(clouds); i++ {
+		clouds[i].Allocatable.CPU.LogicalCores = clouds[i].Capacity.CPU.LogicalCores
+	}
+
+	//for i := 0; i < len(unorderedApps); i++ {
+	//	fmt.Printf("app: %d, isTask: %t, accept: %t, priority: %d, startTime: %g, completionTime: %g \ndepend on [ \n, ", i, unorderedApps[i].IsTask, chromosome[i] != len(clouds), unorderedApps[i].Priority, unorderedApps[i].StartTime, unorderedApps[i].TaskCompletionTime)
+	//	for j := 0; j < len(unorderedApps[i].Depend); j++ {
+	//		fmt.Printf("(app: %d, isTask: %t, accept: %t, priority: %d, startTime: %g, completionTime: %g) \n", unorderedApps[i].Depend[j].AppIdx, unorderedApps[unorderedApps[i].Depend[j].AppIdx].IsTask, chromosome[unorderedApps[i].Depend[j].AppIdx] != len(clouds), unorderedApps[unorderedApps[i].Depend[j].AppIdx].Priority, unorderedApps[unorderedApps[i].Depend[j].AppIdx].StartTime, unorderedApps[unorderedApps[i].Depend[j].AppIdx].TaskCompletionTime)
+	//	}
+	//	fmt.Println("]")
+	//}
+	//time.Sleep(100 * time.Second)
+
 }
 
-// fitness of a single application, the fitness values is possibly less than 0
-// the input clouds[chosenCloudIndex].RunningApps should be sorted according to the priority
-func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int, fitnessParameter float64) float64 {
+// fitness of a single application, the fitness values is >= 0
+func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
 	if chosenCloudIndex == len(clouds) {
 		return 0
 	}
@@ -150,23 +201,19 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
 			// find this app in RunningApps of this cloud
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
-				thisTaskExecTime := clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
-				// Maxmize ((t-Ta)/t + X/t + Aa) * priority
-				return ((totalExecTime-thisTaskExecTime)/totalExecTime + fitnessParameter/totalExecTime + 1) * float64(app.Priority)
+				thisTaskCompleTime := clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
+				// Maximize ((t-Ta)/t + Aa) * priority
+				return ((totalExecTime-thisTaskCompleTime)/totalExecTime + 1) * float64(app.Priority)
 			}
 		}
 		log.Panicln("Task, cannot find clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx")
 	} else { // Service: maximize execution time
-		thisServiceExecTime := totalExecTime
 		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
-			if clouds[chosenCloudIndex].RunningApps[i].IsTask { // the Tasks with higher priorities should be executed firstly
-				thisServiceExecTime = totalExecTime - clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
-				continue
-			}
 			// find this app in RunningApps of this cloud
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
-				// Maximize (tb/t + X/t + Ab) *priority
-				return (thisServiceExecTime/totalExecTime + fitnessParameter/totalExecTime + 1) * float64(app.Priority)
+				thisServiceExecTime := totalExecTime - clouds[chosenCloudIndex].RunningApps[i].StartTime
+				// Maximize (tb/t + Ab) *priority
+				return (thisServiceExecTime/totalExecTime + 1) * float64(app.Priority)
 			}
 		}
 		log.Panicln("Service, cannot find clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx")
@@ -280,7 +327,7 @@ func InitializeAcceptableChromosome(clouds []model.Cloud, apps []model.Applicati
 	for len(undeployed) > 0 {
 		appIndex := random.RandomInt(0, len(undeployed)-1)
 		for i := 0; i < len(clouds); i++ {
-			if !MeetNetLatency(clouds[i], apps[undeployed[appIndex]]) {
+			if !CloudMeetApp(clouds[i], apps[undeployed[appIndex]]) {
 				continue
 			}
 			chromosome[undeployed[appIndex]] = i
@@ -523,6 +570,9 @@ func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Applicatio
 				copyPopulation[i][j] = newGene
 			}
 		}
+
+		fixDependence(clouds, apps, copyPopulation[i])
+
 		// After mutation, if the chromosome becomes unacceptable, we discard it, and randomly generate a new acceptable one
 		// This is to control the population mutate to good direction
 		if !Acceptable(clouds, apps, copyPopulation[i]) {
@@ -531,6 +581,19 @@ func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Applicatio
 	}
 
 	return copyPopulation
+}
+
+// for every app, if any of its dependent apps is rejected, we also reject it.
+// fix dependence for a chromosome, avoiding regenerating due to invalid.
+// regenerating means restart to evolve
+func fixDependence(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) {
+	for i := 0; i < len(apps); i++ {
+		for j := 0; j < len(apps[i].Depend); j++ {
+			if chromosome[apps[i].Depend[j].AppIdx] == len(clouds) && chromosome[i] != len(clouds) {
+				chromosome[i] = len(clouds)
+			}
+		}
+	}
 }
 
 func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (model.Solution, error) {
@@ -554,6 +617,11 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 		//for i, chromosome := range currentPopulation {
 		//	log.Println(i, chromosome)
 		//}
+
+		for i := 0; i < len(currentPopulation); i++ {
+			fixDependence(clouds, apps, currentPopulation[i])
+		}
+
 		//log.Printf("--------mutation in iteration %d-------\n", iteration)
 		currentPopulation = g.mutationOperator(clouds, apps, currentPopulation)
 		//for i, chromosome := range currentPopulation {

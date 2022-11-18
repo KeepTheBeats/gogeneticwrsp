@@ -124,6 +124,20 @@ func chooseReqRTT() float64 {
 	return reqRttToChoose[random.RandomInt(0, len(reqRttToChoose)-1)]
 }
 
+// generate Input Data Size for an application, unit B
+func generateInputSize() float64 {
+	return random.RandomFloat64(430080, 65011712) // uniform distribution
+}
+
+// generate container image size for an application, unit B
+func generateImageSize() float64 {
+	var imageSize float64
+	// from images in the first page of https://hub.docker.com/search?image_filter=official&q=&type=image
+	lowerBound, upperBound, miu, sigma := 13619.2, 1043333120.0, 343125649.8, 322164492.5
+	imageSize = random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
+	return imageSize
+}
+
 // Priority of application range [100, 65535]
 func generatePriority(lowerBound, upperBound, miu, sigma float64) uint16 {
 	return uint16(random.NormalRandomBM(lowerBound, upperBound, miu, sigma))

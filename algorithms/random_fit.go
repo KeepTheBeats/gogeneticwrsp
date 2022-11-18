@@ -42,7 +42,7 @@ func RandomFitSchedule(clouds []model.Cloud, apps []model.Application) []int {
 
 		for len(untried) > 0 {
 			cloudIndex := random.RandomInt(0, len(untried)-1) // cloudIndex in untried
-			if !MeetNetLatency(clouds[untried[cloudIndex]], apps[undeployed[appIndex]]) {
+			if !CloudMeetApp(clouds[untried[cloudIndex]], apps[undeployed[appIndex]]) {
 				untried = append(untried[:cloudIndex], untried[cloudIndex+1:]...)
 				continue
 			}
