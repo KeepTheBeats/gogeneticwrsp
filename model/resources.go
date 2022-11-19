@@ -1,10 +1,5 @@
 package model
 
-import (
-	"encoding/json"
-	"log"
-)
-
 // Resources : resources that clouds have and applications require
 type Resources struct {
 	CPU     CPUResource `json:"cpu"`
@@ -21,15 +16,9 @@ type Resources struct {
 
 // ResCopy deep copy a resource
 func ResCopy(src Resources) Resources {
-	resJson, err := json.Marshal(src)
-	if err != nil {
-		log.Fatalln("json.Marshal(src) error:", err.Error())
-	}
-	var dst Resources
-	err = json.Unmarshal(resJson, &dst)
-	if err != nil {
-		log.Fatalln("json.Unmarshal(resJson, &dst) error:", err.Error())
-	}
+	var dst Resources = src
+	dst.NetCondClouds = make([]NetworkCondition, len(src.NetCondClouds))
+	copy(dst.NetCondClouds, src.NetCondClouds)
 	return dst
 }
 

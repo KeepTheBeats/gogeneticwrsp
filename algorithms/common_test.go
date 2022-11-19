@@ -216,7 +216,7 @@ func TestAcceptable(t *testing.T) {
 				Memory:  10000,
 				Storage: 10000,
 			},
-			Allocatable: model.Resources{
+			TmpAlloc: model.Resources{
 				CPU: model.CPUResource{
 					LogicalCores: 20,
 					BaseClock:    10000,
@@ -234,7 +234,7 @@ func TestAcceptable(t *testing.T) {
 				Memory:  10000,
 				Storage: 10000,
 			},
-			Allocatable: model.Resources{
+			TmpAlloc: model.Resources{
 				CPU: model.CPUResource{
 					LogicalCores: 20,
 					BaseClock:    10000,

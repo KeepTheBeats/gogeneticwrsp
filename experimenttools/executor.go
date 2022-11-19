@@ -22,25 +22,41 @@ import (
 	"gogeneticwrsp/model"
 )
 
-func getFilePaths(numCloud, numApp int) (string, string) {
-	var cloudPath, appPath string
-	if runtime.GOOS == "windows" {
-		cloudPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experimenttools\\cloud_%d.json", build.Default.GOPATH, numCloud)
-		appPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experimenttools\\app_%d.json", build.Default.GOPATH, numApp)
-	} else {
-		cloudPath = fmt.Sprintf("%s/src/gogeneticwrsp/experimenttools/cloud_%d.json", build.Default.GOPATH, numCloud)
-		appPath = fmt.Sprintf("%s/src/gogeneticwrsp/experimenttools/app_%d.json", build.Default.GOPATH, numApp)
-	}
-	return cloudPath, appPath
+func getFilePaths(numCloud, numApp int, appSuffix string) (string, string) {
+	return getCloudFilePaths(numCloud), getAppFilePaths(numApp, appSuffix)
 }
 
 // GenerateCloudsApps generates clouds and apps and writes them into files.
-func GenerateCloudsApps(numCloud, numApp int) {
+func GenerateCloudsApps(numCloud, numApp int, suffix string) {
+	GenerateClouds(numCloud)
+	GenerateApps(numApp, suffix)
+}
 
-	log.Printf("generate %d clouds and %d applications and write them into files\n", numCloud, numApp)
+func getCloudFilePaths(numCloud int) string {
+	var cloudPath string
+	if runtime.GOOS == "windows" {
+		cloudPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experimenttools\\cloud_%d.json", build.Default.GOPATH, numCloud)
+	} else {
+		cloudPath = fmt.Sprintf("%s/src/gogeneticwrsp/experimenttools/cloud_%d.json", build.Default.GOPATH, numCloud)
+	}
+	return cloudPath
+}
+
+func getAppFilePaths(numApp int, suffix string) string {
+	var appPath string
+	if runtime.GOOS == "windows" {
+		appPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experimenttools\\app_%d_%s.json", build.Default.GOPATH, numApp, suffix)
+	} else {
+		appPath = fmt.Sprintf("%s/src/gogeneticwrsp/experimenttools/app_%d_%s.json", build.Default.GOPATH, numApp, suffix)
+	}
+	return appPath
+}
+
+// GenerateClouds generates clouds and writes them into files.
+func GenerateClouds(numCloud int) {
+	log.Printf("generate %d clouds and write them into files\n", numCloud)
 
 	var clouds []model.Cloud = make([]model.Cloud, numCloud)
-	var apps []model.Application = make([]model.Application, numApp)
 
 	// generate clouds
 	//cloudDiffTimes := 2.0 // give clouds different types
@@ -77,21 +93,57 @@ func GenerateCloudsApps(numCloud, numApp int) {
 		clouds[i].Capacity.UpBwController = generateResourceBW()
 
 		clouds[i].Allocatable = model.ResCopy(clouds[i].Capacity)
+		clouds[i].TmpAlloc = model.ResCopy(clouds[i].Capacity)
 
 		clouds[i].RunningApps = []model.Application{}
 		clouds[i].UpdateTime = time.Now()
 	}
 
+	cloudsJson, err := json.Marshal(clouds)
+	if err != nil {
+		log.Fatalln("json.Marshal(clouds) error:", err.Error())
+	}
+
+	var cloudPath string = getCloudFilePaths(numCloud)
+
+	err = ioutil.WriteFile(cloudPath, cloudsJson, 0777)
+	if err != nil {
+		log.Fatalln("ioutil.WriteFile(cloudPath, cloudsJson, 0777) error:", err.Error())
+	}
+}
+
+// GenerateApps generates apps and writes them into files.
+func GenerateApps(numApp int, suffix string) {
+
+	log.Printf("generate %d applications and write them into files\n", numApp)
+
+	var apps []model.Application = make([]model.Application, numApp)
+
 	// generate applications
 	//var taskProportion float64 = random.RandomFloat64(0.1, 0.9)
 	var taskProportion float64 = 0.5
-	var lastTaskIdx int = int(float64(numApp)*taskProportion) - 1
+	var taskNum int = int(float64(numApp) * taskProportion)
+	var svcNum int = numApp - taskNum
 	log.Println("taskProportion", taskProportion)
-	log.Println("lastTaskIdx", lastTaskIdx)
+	log.Println("taskNum", taskNum)
+	log.Println("svcNum", svcNum)
 
 	//appDiffTimes := 2.0 // give clouds different types
+	var currentTaskNum, currentSvcNum int = 0, 0
 	for i := 0; i < numApp; i++ {
-		if i <= lastTaskIdx {
+		var isTask bool
+		if currentTaskNum >= taskNum {
+			isTask = false
+		} else if currentSvcNum >= svcNum {
+			isTask = true
+		} else if random.RandomFloat64(0, 1) < taskProportion {
+			isTask = true
+		} else {
+			isTask = false
+		}
+
+		if isTask {
+			currentTaskNum++
 			apps[i].IsTask = true
 			apps[i].TaskReq.CPUCycle = generateTaskCPU()
 
@@ -107,6 +159,7 @@ func GenerateCloudsApps(numCloud, numApp int) {
 			//}
 
 		} else {
+			currentSvcNum++
 			apps[i].IsTask = false
 			apps[i].SvcReq.CPUClock = generateSvcCPU()
 			apps[i].SvcReq.Memory = chooseReqMem()
@@ -128,8 +181,7 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	}
 
 	// generate dependence
-	var orderedApps []model.Application = make([]model.Application, numApp)
-	copy(orderedApps, apps)
+	var orderedApps []model.Application = model.AppsCopy(apps)
 	sort.Sort(model.AppSlice(orderedApps))
 	for i := 0; i < numApp; i++ {
 		// randomly choose whether this app depends on others
@@ -184,21 +236,13 @@ func GenerateCloudsApps(numCloud, numApp int) {
 
 	}
 
-	cloudsJson, err := json.Marshal(clouds)
-	if err != nil {
-		log.Fatalln("json.Marshal(clouds) error:", err.Error())
-	}
 	appsJson, err := json.Marshal(apps)
 	if err != nil {
 		log.Fatalln("json.Marshal(apps) error:", err.Error())
 	}
 
-	var cloudPath, appPath string = getFilePaths(numCloud, numApp)
+	var appPath string = getAppFilePaths(numApp, suffix)
 
-	err = ioutil.WriteFile(cloudPath, cloudsJson, 0777)
-	if err != nil {
-		log.Fatalln("ioutil.WriteFile(cloudPath, cloudsJson, 0777) error:", err.Error())
-	}
 	err = ioutil.WriteFile(appPath, appsJson, 0777)
 	if err != nil {
 		log.Fatalln("ioutil.WriteFile(appPath, appsJson, 0777) error:", err.Error())
@@ -206,30 +250,44 @@ func GenerateCloudsApps(numCloud, numApp int) {
 }
 
 // ReadCloudsApps from files
-func ReadCloudsApps(numCloud, numApp int) ([]model.Cloud, []model.Application) {
-	var cloudPath, appPath string = getFilePaths(numCloud, numApp)
+func ReadCloudsApps(numCloud, numApp int, suffix string) ([]model.Cloud, []model.Application) {
+	return ReadClouds(numCloud), ReadApps(numApp, suffix)
+}
+
+// ReadClouds from files
+func ReadClouds(numCloud int) []model.Cloud {
+	var cloudPath string = getCloudFilePaths(numCloud)
 	var clouds []model.Cloud
-	var apps []model.Application
 
 	cloudsJson, err := ioutil.ReadFile(cloudPath)
 	if err != nil {
 		log.Fatalln("ioutil.ReadFile(cloudPath) error:", err.Error())
-	}
-	appsJson, err := ioutil.ReadFile(appPath)
-	if err != nil {
-		log.Fatalln("ioutil.ReadFile(appPath) error:", err.Error())
 	}
 
 	err = json.Unmarshal(cloudsJson, &clouds)
 	if err != nil {
 		log.Fatalln("json.Unmarshal(cloudsJson, &clouds) error:", err.Error())
 	}
+
+	return clouds
+}
+
+// ReadApps from files
+func ReadApps(numApp int, suffix string) []model.Application {
+	var appPath string = getAppFilePaths(numApp, suffix)
+	var apps []model.Application
+
+	appsJson, err := ioutil.ReadFile(appPath)
+	if err != nil {
+		log.Fatalln("ioutil.ReadFile(appPath) error:", err.Error())
+	}
+
 	err = json.Unmarshal(appsJson, &apps)
 	if err != nil {
 		log.Fatalln("json.Unmarshal(appsJson, &apps) error:", err.Error())
 	}
 
-	return clouds, apps
+	return apps
 }
 
 type OneTimeHelper struct {
@@ -275,7 +333,7 @@ func OneTimeExperiment(clouds []model.Cloud, apps []model.Application) {
 	}
 
 	for _, experimenter := range experimenters {
-		log.Println(experimenter.Name+", fitness:", algorithms.Fitness(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "CPUClock Idle Rate:", algorithms.CPUIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Memory Idle Rate:", algorithms.MemoryIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Storage Idle Rate:", algorithms.StorageIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Total Accepted Priority:", algorithms.AcceptedPriority(clouds, apps, experimenter.ExperimentSolution.SchedulingResult))
+		log.Println(experimenter.Name+", fitness:", algorithms.Fitness(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "CPUClock Idle Rate:", algorithms.CPUIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Memory Idle Rate:", algorithms.MemoryIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Storage Idle Rate:", algorithms.StorageIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Bandwidth Idle Rate:", algorithms.BwIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Total Accepted Priority:", algorithms.AcceptedPriority(clouds, apps, experimenter.ExperimentSolution.SchedulingResult))
 		if v, ok := experimenter.ExperimentAlgorithm.(*algorithms.Genetic); ok {
 			log.Println("Got Iteration:", v.BestUntilNowUpdateIterations[len(v.BestUntilNowUpdateIterations)-1], v.BestAcceptableUntilNowUpdateIterations[len(v.BestAcceptableUntilNowUpdateIterations)-1])
 		}
@@ -287,11 +345,14 @@ type ContinuousHelper struct {
 	CPUIdleRecords              []float64
 	MemoryIdleRecords           []float64
 	StorageIdleRecords          []float64
+	BwIdleRecords               []float64
 	AcceptedPriorityRateRecords []float64
+	AcceptedSvcPriRateRecords   []float64
+	AcceptedTaskPriRateRecords  []float64
 }
 
 // ContinuousExperiment is that the applications are deployed one by one. In one time, we only handle one application.
-func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
+func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application) {
 
 	var currentClouds []model.Cloud
 	var currentApps []model.Application
@@ -302,14 +363,20 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		CPUIdleRecords:              make([]float64, 0),
 		MemoryIdleRecords:           make([]float64, 0),
 		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
 		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
 	}
 	var randomFitRecorder ContinuousHelper = ContinuousHelper{
 		Name:                        "Random Fit",
 		CPUIdleRecords:              make([]float64, 0),
 		MemoryIdleRecords:           make([]float64, 0),
 		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
 		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
 	}
 	// Multi-cloud Applications Scheduling Genetic Algorithm (MCASGA)
 	var MCASGARecorder ContinuousHelper = ContinuousHelper{
@@ -317,70 +384,87 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		CPUIdleRecords:              make([]float64, 0),
 		MemoryIdleRecords:           make([]float64, 0),
 		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
 		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
 	}
 
 	// First Fit
-	currentClouds = make([]model.Cloud, len(clouds))
-	copy(currentClouds, clouds)
+	currentClouds = model.CloudsCopy(clouds)
 	currentApps = []model.Application{}
 	currentSolution = model.Solution{}
 
 	for i := 0; i < len(apps); i++ {
-		// the ith applications request comes
-		currentApps = append(currentApps, apps[i])
-		thisApp := []model.Application{apps[i]}
-		ff := algorithms.NewFirstFit(currentClouds, thisApp)
-		solution, err := ff.Schedule(currentClouds, thisApp)
+		// the ith applications group request comes
+		currentApps = model.CombApps(currentApps, apps[i])
+		thisAppGroup := apps[i]
+		ff := algorithms.NewFirstFit(currentClouds, thisAppGroup)
+		solution, err := ff.Schedule(currentClouds, thisAppGroup)
 		if err != nil {
 			log.Printf("Error, app %d. Error message: %s", i, err.Error())
 		}
 		// deploy this app in current clouds (subtract the resources)
-		currentClouds = algorithms.SimulateDeploy(currentClouds, thisApp, solution)
+		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+		// RunningApps should be empty before the scheduling of the next round
+		for j := 0; j < len(currentClouds); j++ {
+			currentClouds[j].RunningApps = []model.Application{}
+		}
+
 		// add the solution of this app to current solution
 		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
 		// evaluate current solution, current cloud, current apps
 		firstFitRecorder.CPUIdleRecords = append(firstFitRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		firstFitRecorder.MemoryIdleRecords = append(firstFitRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		firstFitRecorder.StorageIdleRecords = append(firstFitRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
+		firstFitRecorder.BwIdleRecords = append(firstFitRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		firstFitRecorder.AcceptedPriorityRateRecords = append(firstFitRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, currentApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, currentApps, currentSolution.SchedulingResult)))
+		firstFitRecorder.AcceptedSvcPriRateRecords = append(firstFitRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, currentApps, currentSolution.SchedulingResult))
+		firstFitRecorder.AcceptedTaskPriRateRecords = append(firstFitRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, currentApps, currentSolution.SchedulingResult))
 	}
 
 	// Random Fit
-	currentClouds = make([]model.Cloud, len(clouds))
-	copy(currentClouds, clouds)
+	currentClouds = model.CloudsCopy(clouds)
 	currentApps = []model.Application{}
 	currentSolution = model.Solution{}
 
 	for i := 0; i < len(apps); i++ {
-		// the ith applications request comes
-		currentApps = append(currentApps, apps[i])
-		thisApp := []model.Application{apps[i]}
-		rf := algorithms.NewRandomFit(currentClouds, thisApp)
-		solution, err := rf.Schedule(currentClouds, thisApp)
+
+		// the ith applications group request comes
+		currentApps = model.CombApps(currentApps, apps[i])
+		thisAppGroup := apps[i]
+
+		rf := algorithms.NewRandomFit(currentClouds, thisAppGroup)
+		solution, err := rf.Schedule(currentClouds, thisAppGroup)
 		if err != nil {
 			log.Printf("Error, app %d. Error message: %s", i, err.Error())
 		}
 		// deploy this app in current clouds (subtract the resources)
-		currentClouds = algorithms.SimulateDeploy(currentClouds, thisApp, solution)
+		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+		// RunningApps should be empty before the scheduling of the next round
+		for j := 0; j < len(currentClouds); j++ {
+			currentClouds[j].RunningApps = []model.Application{}
+		}
 		// add the solution of this app to current solution
 		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
 		// evaluate current solution, current cloud, current apps
 		randomFitRecorder.CPUIdleRecords = append(randomFitRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		randomFitRecorder.MemoryIdleRecords = append(randomFitRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		randomFitRecorder.StorageIdleRecords = append(randomFitRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
+		randomFitRecorder.BwIdleRecords = append(randomFitRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		randomFitRecorder.AcceptedPriorityRateRecords = append(randomFitRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, currentApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, currentApps, currentSolution.SchedulingResult)))
+		randomFitRecorder.AcceptedSvcPriRateRecords = append(randomFitRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, currentApps, currentSolution.SchedulingResult))
+		randomFitRecorder.AcceptedTaskPriRateRecords = append(randomFitRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, currentApps, currentSolution.SchedulingResult))
 	}
 
 	// MCASGA
-	currentClouds = make([]model.Cloud, len(clouds))
-	copy(currentClouds, clouds)
+	currentClouds = model.CloudsCopy(clouds)
 	currentApps = []model.Application{}
 	currentSolution = model.Solution{}
 
 	for i := 0; i < len(apps); i++ {
-		// the ith applications request comes
-		currentApps = append(currentApps, apps[i])
+		// the ith applications group request comes
+		currentApps = model.CombApps(currentApps, apps[i])
 		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, currentApps)
 		ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, clouds, currentApps)
 		solution, err := ga.Schedule(clouds, currentApps)
@@ -388,14 +472,17 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 			log.Printf("Error, app %d. Error message: %s", i, err.Error())
 		}
 		// deploy this app in current clouds (subtract the resources)
-		currentClouds = algorithms.SimulateDeploy(clouds, currentApps, solution)
+		currentClouds = algorithms.TrulyDeploy(clouds, currentApps, solution)
 		// add the solution of this app to current solution
 		currentSolution = solution
 		// evaluate current solution, current cloud, current apps
 		MCASGARecorder.CPUIdleRecords = append(MCASGARecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		MCASGARecorder.MemoryIdleRecords = append(MCASGARecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		MCASGARecorder.StorageIdleRecords = append(MCASGARecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
+		MCASGARecorder.BwIdleRecords = append(MCASGARecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, currentApps, currentSolution.SchedulingResult))
 		MCASGARecorder.AcceptedPriorityRateRecords = append(MCASGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, currentApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, currentApps, currentSolution.SchedulingResult)))
+		MCASGARecorder.AcceptedSvcPriRateRecords = append(MCASGARecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, currentApps, currentSolution.SchedulingResult))
+		MCASGARecorder.AcceptedTaskPriRateRecords = append(MCASGARecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, currentApps, currentSolution.SchedulingResult))
 	}
 
 	log.Println("MCASGA solution:", currentSolution.SchedulingResult)
@@ -403,9 +490,11 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 	// output csv files
 	generateCsvFunc := func(recorder ContinuousHelper) [][]string {
 		var csvContent [][]string
-		csvContent = append(csvContent, []string{"Number of Applications", "CPUClock Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Application Acceptance Rate"})
-		for i := 0; i < len(recorder.CPUIdleRecords); i++ {
-			csvContent = append(csvContent, []string{fmt.Sprintf("%d", i+1), fmt.Sprintf("%f", recorder.CPUIdleRecords[i]), fmt.Sprintf("%f", recorder.MemoryIdleRecords[i]), fmt.Sprintf("%f", recorder.StorageIdleRecords[i]), fmt.Sprintf("%f", recorder.AcceptedPriorityRateRecords[i])})
+		csvContent = append(csvContent, []string{"Number of Applications", "CPUClock Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Bandwidth Idle Rate", "Application Acceptance Rate", "Service Acceptance Rate", "Task Acceptance Rate"})
+		appNum := 0
+		for i := 0; i < len(apps); i++ {
+			appNum += len(apps[i])
+			csvContent = append(csvContent, []string{fmt.Sprintf("%d", appNum), fmt.Sprintf("%f", recorder.CPUIdleRecords[i]), fmt.Sprintf("%f", recorder.MemoryIdleRecords[i]), fmt.Sprintf("%f", recorder.StorageIdleRecords[i]), fmt.Sprintf("%f", recorder.BwIdleRecords[i]), fmt.Sprintf("%f", recorder.AcceptedPriorityRateRecords[i]), fmt.Sprintf("%f", recorder.AcceptedSvcPriRateRecords[i]), fmt.Sprintf("%f", recorder.AcceptedTaskPriRateRecords[i])})
 		}
 		return csvContent
 	}
@@ -444,12 +533,22 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 	writeFileFunc(csvPathFunc(MCASGARecorder.Name), MCASGACsvContent)
 
 	// draw line charts
-	var CPUChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		var appNumbers []float64
-		for i, _ := range MCASGARecorder.CPUIdleRecords {
-			appNumbers = append(appNumbers, float64(i+1))
-		}
+	var appNumbers []float64
+	var ticks []chart.Tick
+	appNumbers = append(appNumbers, float64(len(apps[0])))
+	ticks = append(ticks, chart.Tick{
+		Value: appNumbers[0],
+		Label: fmt.Sprintf("%d", int(appNumbers[0])),
+	})
+	for i := 1; i < len(apps); i++ {
+		appNumbers = append(appNumbers, appNumbers[i-1]+float64(len(apps[i])))
+		ticks = append(ticks, chart.Tick{
+			Value: appNumbers[i],
+			Label: fmt.Sprintf("%d", int(appNumbers[i])),
+		})
+	}
 
+	var CPUChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
 		graph := chart.Chart{
 			Title: "CPUClock Idle Rate",
 			XAxis: chart.XAxis{
@@ -459,6 +558,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 				ValueFormatter: func(v interface{}) string {
 					return strconv.FormatInt(int64(v.(float64)), 10)
 				},
+				Ticks: ticks,
 			},
 			YAxis: chart.YAxis{
 				AxisType:  chart.YAxisSecondary,
@@ -503,11 +603,6 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 	}
 
 	var memoryChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		var appNumbers []float64
-		for i, _ := range MCASGARecorder.MemoryIdleRecords {
-			appNumbers = append(appNumbers, float64(i+1))
-		}
-
 		graph := chart.Chart{
 			Title: "Memory Idle Rate",
 			XAxis: chart.XAxis{
@@ -517,6 +612,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 				ValueFormatter: func(v interface{}) string {
 					return strconv.FormatInt(int64(v.(float64)), 10)
 				},
+				Ticks: ticks,
 			},
 			YAxis: chart.YAxis{
 				AxisType:  chart.YAxisSecondary,
@@ -561,11 +657,6 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 	}
 
 	var storageChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		var appNumbers []float64
-		for i, _ := range MCASGARecorder.MemoryIdleRecords {
-			appNumbers = append(appNumbers, float64(i+1))
-		}
-
 		graph := chart.Chart{
 			Title: "Storage Idle Rate",
 			XAxis: chart.XAxis{
@@ -575,6 +666,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 				ValueFormatter: func(v interface{}) string {
 					return strconv.FormatInt(int64(v.(float64)), 10)
 				},
+				Ticks: ticks,
 			},
 			YAxis: chart.YAxis{
 				AxisType:  chart.YAxisSecondary,
@@ -618,11 +710,61 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		}
 	}
 
-	var priorityChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		var appNumbers []float64
-		for i, _ := range MCASGARecorder.MemoryIdleRecords {
-			appNumbers = append(appNumbers, float64(i+1))
+	var bwChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+		graph := chart.Chart{
+			Title: "Bandwidth Idle Rate",
+			XAxis: chart.XAxis{
+				Name:      "Number of Applications",
+				NameStyle: chart.StyleShow(),
+				Style:     chart.StyleShow(),
+				ValueFormatter: func(v interface{}) string {
+					return strconv.FormatInt(int64(v.(float64)), 10)
+				},
+				Ticks: ticks,
+			},
+			YAxis: chart.YAxis{
+				AxisType:  chart.YAxisSecondary,
+				Name:      "Bandwidth Idle Rate",
+				NameStyle: chart.StyleShow(),
+				Style:     chart.StyleShow(),
+			},
+			Background: chart.Style{
+				Padding: chart.Box{
+					Top:  50,
+					Left: 20,
+				},
+			},
+			Series: []chart.Series{
+				chart.ContinuousSeries{
+					Name:    firstFitRecorder.Name,
+					XValues: appNumbers,
+					YValues: firstFitRecorder.BwIdleRecords,
+				},
+				chart.ContinuousSeries{
+					Name:    randomFitRecorder.Name,
+					XValues: appNumbers,
+					YValues: randomFitRecorder.BwIdleRecords,
+				},
+				chart.ContinuousSeries{
+					Name:    MCASGARecorder.Name,
+					XValues: appNumbers,
+					YValues: MCASGARecorder.BwIdleRecords,
+				},
+			},
 		}
+
+		graph.Elements = []chart.Renderable{
+			chart.LegendThin(&graph),
+		}
+
+		res.Header().Set("Content-Type", "image/png")
+		err := graph.Render(chart.PNG, res)
+		if err != nil {
+			log.Println("Error: graph.Render(chart.PNG, res)", err)
+		}
+	}
+
+	var priorityChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
 
 		graph := chart.Chart{
 			Title: "Application Acceptance Rate",
@@ -633,6 +775,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 				ValueFormatter: func(v interface{}) string {
 					return strconv.FormatInt(int64(v.(float64)), 10)
 				},
+				Ticks: ticks,
 			},
 			YAxis: chart.YAxis{
 				AxisType:  chart.YAxisSecondary,
@@ -676,10 +819,123 @@ func ContinuousExperiment(clouds []model.Cloud, apps []model.Application) {
 		}
 	}
 
+	var svcPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+
+		graph := chart.Chart{
+			Title: "Service Acceptance Rate",
+			XAxis: chart.XAxis{
+				Name:      "Number of Applications",
+				NameStyle: chart.StyleShow(),
+				Style:     chart.StyleShow(),
+				ValueFormatter: func(v interface{}) string {
+					return strconv.FormatInt(int64(v.(float64)), 10)
+				},
+				Ticks: ticks,
+			},
+			YAxis: chart.YAxis{
+				AxisType:  chart.YAxisSecondary,
+				Name:      "Service Acceptance Rate",
+				NameStyle: chart.StyleShow(),
+				Style:     chart.StyleShow(),
+			},
+			Background: chart.Style{
+				Padding: chart.Box{
+					Top:  50,
+					Left: 20,
+				},
+			},
+			Series: []chart.Series{
+				chart.ContinuousSeries{
+					Name:    firstFitRecorder.Name,
+					XValues: appNumbers,
+					YValues: firstFitRecorder.AcceptedSvcPriRateRecords,
+				},
+				chart.ContinuousSeries{
+					Name:    randomFitRecorder.Name,
+					XValues: appNumbers,
+					YValues: randomFitRecorder.AcceptedSvcPriRateRecords,
+				},
+				chart.ContinuousSeries{
+					Name:    MCASGARecorder.Name,
+					XValues: appNumbers,
+					YValues: MCASGARecorder.AcceptedSvcPriRateRecords,
+				},
+			},
+		}
+
+		graph.Elements = []chart.Renderable{
+			chart.LegendThin(&graph),
+		}
+
+		res.Header().Set("Content-Type", "image/png")
+		err := graph.Render(chart.PNG, res)
+		if err != nil {
+			log.Println("Error: graph.Render(chart.PNG, res)", err)
+		}
+	}
+
+	var taskPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+
+		graph := chart.Chart{
+			Title: "Task Acceptance Rate",
+			XAxis: chart.XAxis{
+				Name:      "Number of Applications",
+				NameStyle: chart.StyleShow(),
+				Style:     chart.StyleShow(),
+				ValueFormatter: func(v interface{}) string {
+					return strconv.FormatInt(int64(v.(float64)), 10)
+				},
+				Ticks: ticks,
+			},
+			YAxis: chart.YAxis{
+				AxisType:  chart.YAxisSecondary,
+				Name:      "Task Acceptance Rate",
+				NameStyle: chart.StyleShow(),
+				Style:     chart.StyleShow(),
+			},
+			Background: chart.Style{
+				Padding: chart.Box{
+					Top:  50,
+					Left: 20,
+				},
+			},
+			Series: []chart.Series{
+				chart.ContinuousSeries{
+					Name:    firstFitRecorder.Name,
+					XValues: appNumbers,
+					YValues: firstFitRecorder.AcceptedTaskPriRateRecords,
+				},
+				chart.ContinuousSeries{
+					Name:    randomFitRecorder.Name,
+					XValues: appNumbers,
+					YValues: randomFitRecorder.AcceptedTaskPriRateRecords,
+				},
+				chart.ContinuousSeries{
+					Name:    MCASGARecorder.Name,
+					XValues: appNumbers,
+					YValues: MCASGARecorder.AcceptedTaskPriRateRecords,
+				},
+			},
+		}
+
+		graph.Elements = []chart.Renderable{
+			chart.LegendThin(&graph),
+		}
+
+		res.Header().Set("Content-Type", "image/png")
+		err := graph.Render(chart.PNG, res)
+		if err != nil {
+			log.Println("Error: graph.Render(chart.PNG, res)", err)
+		}
+	}
+
 	http.HandleFunc("/CPUIdleRate", CPUChartFunc)
 	http.HandleFunc("/memoryIdleRate", memoryChartFunc)
 	http.HandleFunc("/storageIdleRate", storageChartFunc)
+	http.HandleFunc("/bwIdleRate", bwChartFunc)
 	http.HandleFunc("/acceptedPriority", priorityChartFunc)
+	http.HandleFunc("/acceptedSvcPri", svcPriChartFunc)
+	http.HandleFunc("/acceptedTaskPri", taskPriChartFunc)
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Println("Error: http.ListenAndServe(\":8080\", nil)", err)

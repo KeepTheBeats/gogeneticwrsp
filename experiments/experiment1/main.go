@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"gogeneticwrsp/algorithms"
@@ -18,16 +19,23 @@ func main() {
 	// set the log to show line number and file name
 	log.SetFlags(0 | log.Lshortfile)
 
-	var numCloud, numApp int = 10, 30
+	var numCloud int = 10
+	var numInGroup []int = []int{3, 4, 5, 6, 3, 5, 4} // total 30
 
 	// generate clouds and apps, and write to files
-	experimenttools.GenerateCloudsApps(numCloud, numApp)
+	experimenttools.GenerateClouds(numCloud)
+	for i := 0; i < len(numInGroup); i++ {
+		experimenttools.GenerateApps(numInGroup[i], fmt.Sprintf("%d", i))
+	}
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
-	var apps []model.Application
-	clouds, apps = experimenttools.ReadCloudsApps(numCloud, numApp)
+	var appGroups [][]model.Application
+	clouds = experimenttools.ReadClouds(numCloud)
+	for i := 0; i < len(numInGroup); i++ {
+		appGroups = append(appGroups, experimenttools.ReadApps(numInGroup[i], fmt.Sprintf("%d", i)))
+	}
 
-	experimenttools.ContinuousExperiment(clouds, apps)
+	experimenttools.ContinuousExperiment(clouds, appGroups)
 
 }

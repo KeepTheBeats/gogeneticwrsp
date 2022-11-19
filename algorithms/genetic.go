@@ -15,6 +15,16 @@ import (
 type Chromosome []int
 type Population []Chromosome
 
+// PopulationCopy deep copy a population
+func PopulationCopy(src Population) Population {
+	var dst Population = make(Population, len(src))
+	for i := 0; i < len(dst); i++ {
+		dst[i] = make(Chromosome, len(src[i]))
+		copy(dst[i], src[i])
+	}
+	return dst
+}
+
 type Genetic struct {
 	ChromosomesCount       int
 	IterationCount         int
@@ -84,8 +94,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 // Fitness calculate the fitness value of this scheduling result, the fitness values is possibly less than 0
 func Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) float64 {
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
-	var appsCopy []model.Application = make([]model.Application, len(apps))
-	copy(appsCopy, apps)
+	var appsCopy []model.Application = model.AppsCopy(apps)
 	CalcStartComplTime(deployedClouds, appsCopy, chromosome)
 	//for i := 0; i < len(deployedClouds); i++ {
 	//	sort.Sort(model.AppSlice(deployedClouds[i].RunningApps))
@@ -97,9 +106,10 @@ func Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromoso
 	//time.Sleep(101 * time.Second)
 
 	var fitnessValue float64
+	appsCopy = model.AppsCopy(apps)
 	// the fitnessValue is based on each application
 	for appIndex := 0; appIndex < len(chromosome); appIndex++ {
-		fitnessValue += fitnessOneApp(deployedClouds, apps[appIndex], chromosome[appIndex])
+		fitnessValue += fitnessOneApp(deployedClouds, appsCopy[appIndex], chromosome[appIndex])
 	}
 
 	return fitnessValue
@@ -111,11 +121,10 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 	// initialization
 	for i := 0; i < len(clouds); i++ {
 		clouds[i].TotalTaskComplTime = 0
-		clouds[i].Allocatable.CPU.LogicalCores = clouds[i].Capacity.CPU.LogicalCores
+		clouds[i].TmpAlloc.CPU.LogicalCores = clouds[i].Allocatable.CPU.LogicalCores
 	}
 	// save the original order of apps
-	unorderedApps := make([]model.Application, len(apps))
-	copy(unorderedApps, apps)
+	unorderedApps := model.AppsCopy(apps)
 	// traverse apps from high priority to low priority
 	sort.Sort(model.AppSlice(apps))
 	for k := 0; k < len(apps); k++ {
@@ -146,20 +155,20 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 				unorderedApps[apps[k].AppIdx].StartTime = latestStartTime
 
 				// calculate image pulling time, 1 Byte = 8 bits
-				imagePullTime := (clouds[cloudIndex].RunningApps[i].ImageSize*8)/(clouds[cloudIndex].Allocatable.NetCondImage.DownBw*1024*1024) + (clouds[cloudIndex].Allocatable.NetCondImage.RTT / 1000) // unit: second
+				imagePullTime := (clouds[cloudIndex].RunningApps[i].ImageSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondImage.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondImage.RTT / 1000) // unit: second
 				// calculate time of transmitting data from Architecture Controller to this cloud, 1 Byte = 8 bits
-				dataInputTime := (clouds[cloudIndex].RunningApps[i].InputDataSize*8)/(clouds[cloudIndex].Allocatable.NetCondController.DownBw*1024*1024) + (clouds[cloudIndex].Allocatable.NetCondController.RTT / 1000) // unit: second
+				dataInputTime := (clouds[cloudIndex].RunningApps[i].InputDataSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondController.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondController.RTT / 1000) // unit: second
 
 				if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
 					// task execution time
-					execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (clouds[cloudIndex].Allocatable.CPU.LogicalCores * clouds[cloudIndex].Allocatable.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
+					execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (clouds[cloudIndex].TmpAlloc.CPU.LogicalCores * clouds[cloudIndex].TmpAlloc.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
 					// a task should consume the three parts of time
 					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + execTime
 					clouds[cloudIndex].RunningApps[i].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
 					unorderedApps[apps[k].AppIdx].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
 				} else { // Services take up the resource
 					// take up cpu
-					clouds[cloudIndex].Allocatable.CPU.LogicalCores -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].Allocatable.CPU.BaseClock
+					clouds[cloudIndex].TmpAlloc.CPU.LogicalCores -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].TmpAlloc.CPU.BaseClock
 
 					// a service should consume the two parts of time
 					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime
@@ -172,7 +181,7 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 
 	// restore
 	for i := 0; i < len(clouds); i++ {
-		clouds[i].Allocatable.CPU.LogicalCores = clouds[i].Capacity.CPU.LogicalCores
+		clouds[i].TmpAlloc.CPU.LogicalCores = clouds[i].Allocatable.CPU.LogicalCores
 	}
 
 	//for i := 0; i < len(unorderedApps); i++ {
@@ -233,11 +242,11 @@ func fitnessOneAppOld(clouds []model.Cloud, app model.Application, chosenCloudIn
 	var overflow bool
 
 	var cpuFitness float64 // fitness about CPUClock
-	if clouds[chosenCloudIndex].Allocatable.CPU.LogicalCores >= 0 {
+	if clouds[chosenCloudIndex].TmpAlloc.CPU.LogicalCores >= 0 {
 		cpuFitness = 1
 	} else {
 		// CPUClock is compressible resource in Kubernetes
-		//overflowRate := clouds[chosenCloudIndex].Capacity.CPUClock / ((0 - clouds[chosenCloudIndex].Allocatable.CPUClock) + clouds[chosenCloudIndex].Capacity.CPUClock)
+		//overflowRate := clouds[chosenCloudIndex].Capacity.CPUClock / ((0 - clouds[chosenCloudIndex].TmpAlloc.CPUClock) + clouds[chosenCloudIndex].Capacity.CPUClock)
 		cpuFitness = -1
 		overflow = true
 		// even CPUClock is compressible, I think we still should not allow it to overflow
@@ -245,26 +254,26 @@ func fitnessOneAppOld(clouds []model.Cloud, app model.Application, chosenCloudIn
 	subFitness = append(subFitness, cpuFitness)
 
 	var memoryFitness float64 // fitness about memory
-	if clouds[chosenCloudIndex].Allocatable.Memory >= 0 {
+	if clouds[chosenCloudIndex].TmpAlloc.Memory >= 0 {
 		memoryFitness = 1
 	} else {
 		// Memory is incompressible resource in Kubernetes, but the fitness is used for the selection in evolution
 		// After evolution, we will only output the solution with no overflow resources
 		//memoryFitness = 0
-		//overflowRate := clouds[chosenCloudIndex].Capacity.Memory / ((0 - clouds[chosenCloudIndex].Allocatable.Memory) + clouds[chosenCloudIndex].Capacity.Memory)
+		//overflowRate := clouds[chosenCloudIndex].Capacity.Memory / ((0 - clouds[chosenCloudIndex].TmpAlloc.Memory) + clouds[chosenCloudIndex].Capacity.Memory)
 		memoryFitness = -1
 		overflow = true
 	}
 	subFitness = append(subFitness, memoryFitness)
 
 	var storageFitness float64 // fitness about storage
-	if clouds[chosenCloudIndex].Allocatable.Storage >= 0 {
+	if clouds[chosenCloudIndex].TmpAlloc.Storage >= 0 {
 		storageFitness = 1
 	} else {
 		// Storage is incompressible resource in Kubernetes, but the fitness is used for the selection in evolution
 		// After evolution, we will only output the solution with no overflow resources
 		//storageFitness = 0
-		//overflowRate := clouds[chosenCloudIndex].Capacity.Storage / ((0 - clouds[chosenCloudIndex].Allocatable.Storage) + clouds[chosenCloudIndex].Capacity.Storage)
+		//overflowRate := clouds[chosenCloudIndex].Capacity.Storage / ((0 - clouds[chosenCloudIndex].TmpAlloc.Storage) + clouds[chosenCloudIndex].Capacity.Storage)
 		storageFitness = -1
 		overflow = true
 	}
@@ -478,8 +487,7 @@ func (g *Genetic) crossoverOperator(clouds []model.Cloud, apps []model.Applicati
 		return population
 	}
 	// avoid changing the original population, maybe not needed but for security
-	var copyPopulation Population = make(Population, len(population))
-	copy(copyPopulation, population)
+	var copyPopulation Population = PopulationCopy(population)
 
 	// traverse all chromosomes in this population, use random to judge whether a chromosome needs crossover
 	var indexesNeedCrossover []int
@@ -553,8 +561,7 @@ func (g *Genetic) crossoverOperator(clouds []model.Cloud, apps []model.Applicati
 
 func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Application, population Population) Population {
 	// avoid changing the original population, maybe not needed but for security
-	var copyPopulation Population = make(Population, len(population))
-	copy(copyPopulation, population)
+	var copyPopulation Population = PopulationCopy(population)
 
 	// Traverse every gene. Every gene has a probability of g.MutationProbability that it do mutation
 	for i := 0; i < len(copyPopulation); i++ {
@@ -588,9 +595,13 @@ func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Applicatio
 // regenerating means restart to evolve
 func fixDependence(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) {
 	for i := 0; i < len(apps); i++ {
+		if chromosome[i] == len(clouds) {
+			continue
+		}
 		for j := 0; j < len(apps[i].Depend); j++ {
-			if chromosome[apps[i].Depend[j].AppIdx] == len(clouds) && chromosome[i] != len(clouds) {
+			if chromosome[apps[i].Depend[j].AppIdx] == len(clouds) {
 				chromosome[i] = len(clouds)
+				break
 			}
 		}
 	}

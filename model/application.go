@@ -33,6 +33,41 @@ func DependencyValid(apps []Application) error {
 	return nil
 }
 
+// CombApps combine two application slices
+func CombApps(a, b []Application) []Application {
+	aCopy := AppsCopy(a)
+	bCopy := AppsCopy(b)
+	// after combination, every index in bCopy will add aCopy diff, which is len(aCopy)
+	diff := len(aCopy)
+	for i := 0; i < len(bCopy); i++ {
+		bCopy[i].AppIdx += diff
+		for j := 0; j < len(bCopy[i].Depend); j++ {
+			bCopy[i].Depend[j].AppIdx += diff
+		}
+	}
+	aCopy = append(aCopy, bCopy...)
+	return aCopy
+}
+
+// AppsCopy deep copy an Application Slice
+func AppsCopy(src []Application) []Application {
+	var dst []Application = make([]Application, len(src))
+	for i := 0; i < len(dst); i++ {
+		dst[i] = AppCopy(src[i])
+	}
+	return dst
+}
+
+// AppCopy deep copy an Application
+func AppCopy(src Application) Application {
+	var dst Application = src
+
+	dst.Depend = make([]Dependence, len(src.Depend))
+	copy(dst.Depend, src.Depend)
+
+	return dst
+}
+
 type AppSlice []Application
 
 func (as AppSlice) Len() int {

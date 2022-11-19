@@ -12,9 +12,8 @@ func TestResCopy(t *testing.T) {
 			1,
 			1,
 		},
-		Memory:     1,
-		Storage:    1,
-		NetLatency: 1,
+		Memory:  1,
+		Storage: 1,
 		NetCondClouds: []NetworkCondition{
 			NetworkCondition{
 				RTT:    1,
@@ -35,13 +34,13 @@ func TestResCopy(t *testing.T) {
 		UpBwImage:      1,
 		UpBwController: 1,
 	}
-	cloud.Allocatable = ResCopy(cloud.Capacity)
-	//cloud.Allocatable = cloud.Capacity
+	cloud.TmpAlloc = ResCopy(cloud.Capacity)
+	//cloud.TmpAlloc = cloud.Capacity
 	fmt.Println(cloud.Capacity)
-	fmt.Println(cloud.Allocatable)
+	fmt.Println(cloud.TmpAlloc)
 	cloud.Capacity.CPU.LogicalCores += 1
 	cloud.Capacity.CPU.BaseClock += 1
 	cloud.Capacity.NetCondClouds[0].RTT += 1
 	fmt.Println(cloud.Capacity)
-	fmt.Println(cloud.Allocatable)
+	fmt.Println(cloud.TmpAlloc)
 }
