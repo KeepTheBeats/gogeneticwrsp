@@ -43,23 +43,19 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	var apps []model.Application = make([]model.Application, numApp)
 
 	// generate clouds
-	cloudDiffTimes := 2.0 // give clouds different types
+	//cloudDiffTimes := 2.0 // give clouds different types
 	for i := 0; i < numCloud; i++ {
 		clouds[i].Capacity.CPU = chooseResCPU()
-		clouds[i].Capacity.Memory = generateResourceMemoryStorageCapacity(math.Pow(2, 30), math.Pow(2, 36))
-		clouds[i].Capacity.Storage = generateResourceMemoryStorageCapacity(math.Pow(2, 32), math.Pow(2, 39))
-		clouds[i].Capacity.NetLatency = generateResourceNetLatency(0, 4, 2, 2)
+		clouds[i].Capacity.Memory = chooseResMem()
+		clouds[i].Capacity.Storage = chooseResStor()
 
-		// give clouds different types
-		if i > numCloud/4 && i <= numCloud/2 {
-			clouds[i].Capacity.Memory /= cloudDiffTimes
-		}
-		if i > numCloud/2 && i <= int(float64(numCloud)*0.75) {
-			clouds[i].Capacity.Storage /= cloudDiffTimes
-		}
-		if i > int(float64(numCloud)*0.75) {
-			clouds[i].Capacity.NetLatency *= cloudDiffTimes
-		}
+		//// give clouds different types
+		//if i > numCloud/4 && i <= numCloud/2 {
+		//	clouds[i].Capacity.Memory /= cloudDiffTimes
+		//}
+		//if i > numCloud/2 && i <= int(float64(numCloud)*0.75) {
+		//	clouds[i].Capacity.Storage /= cloudDiffTimes
+		//}
 
 		// network conditions
 		clouds[i].Capacity.NetCondClouds = make([]model.NetworkCondition, numCloud)
@@ -93,44 +89,36 @@ func GenerateCloudsApps(numCloud, numApp int) {
 	log.Println("taskProportion", taskProportion)
 	log.Println("lastTaskIdx", lastTaskIdx)
 
-	appDiffTimes := 2.0 // give clouds different types
+	//appDiffTimes := 2.0 // give clouds different types
 	for i := 0; i < numApp; i++ {
 		if i <= lastTaskIdx {
 			apps[i].IsTask = true
 			apps[i].TaskReq.CPUCycle = generateTaskCPU()
 
-			apps[i].TaskReq.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
-			apps[i].TaskReq.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
-			apps[i].TaskReq.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
+			apps[i].TaskReq.Memory = chooseReqMem()
+			apps[i].TaskReq.Storage = chooseReqStor()
 
-			// give applications different types
-			if i > numApp/4 && i <= numApp/2 {
-				apps[i].TaskReq.Memory *= appDiffTimes
-			}
-			if i > numApp/2 && i <= int(float64(numApp)*0.75) {
-				apps[i].TaskReq.Storage *= appDiffTimes
-			}
-			if i > int(float64(numApp)*0.75) {
-				apps[i].TaskReq.NetLatency /= appDiffTimes
-			}
+			//// give applications different types
+			//if i > numApp/4 && i <= numApp/2 {
+			//	apps[i].TaskReq.Memory *= appDiffTimes
+			//}
+			//if i > numApp/2 && i <= int(float64(numApp)*0.75) {
+			//	apps[i].TaskReq.Storage *= appDiffTimes
+			//}
 
 		} else {
 			apps[i].IsTask = false
 			apps[i].SvcReq.CPUClock = generateSvcCPU()
-			apps[i].SvcReq.Memory = generateResourceMemoryStorageRequest(math.Pow(2, 26), math.Pow(2, 32), math.Pow(2, 30), 4000*math.Pow(2, 20))
-			apps[i].SvcReq.Storage = generateResourceMemoryStorageRequest(0, math.Pow(2, 35), math.Pow(2, 33), 24*math.Pow(2, 30))
-			apps[i].SvcReq.NetLatency = generateResourceNetLatency(1, 5, 3, 3)
+			apps[i].SvcReq.Memory = chooseReqMem()
+			apps[i].SvcReq.Storage = chooseReqStor()
 
-			// give applications different types
-			if i > numApp/4 && i <= numApp/2 {
-				apps[i].SvcReq.Memory *= appDiffTimes
-			}
-			if i > numApp/2 && i <= int(float64(numApp)*0.75) {
-				apps[i].SvcReq.Storage *= appDiffTimes
-			}
-			if i > int(float64(numApp)*0.75) {
-				apps[i].SvcReq.NetLatency /= appDiffTimes
-			}
+			//// give applications different types
+			//if i > numApp/4 && i <= numApp/2 {
+			//	apps[i].SvcReq.Memory *= appDiffTimes
+			//}
+			//if i > numApp/2 && i <= int(float64(numApp)*0.75) {
+			//	apps[i].SvcReq.Storage *= appDiffTimes
+			//}
 		}
 
 		apps[i].Priority = generatePriority(100, 65535.9, 150, 300)

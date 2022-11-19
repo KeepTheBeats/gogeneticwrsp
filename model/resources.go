@@ -12,7 +12,6 @@ type Resources struct {
 	Storage float64     `json:"storage"` // unit Byte (B)
 
 	// network resources
-	NetLatency        float64            `json:"netLatency"`        // unit millisecond (ms)
 	NetCondClouds     []NetworkCondition `json:"netCondClouds"`     // network condition between this cloud and every other cloud
 	NetCondImage      NetworkCondition   `json:"netCondImage"`      // network condition between this cloud and image repository
 	NetCondController NetworkCondition   `json:"netCondController"` // network condition between this cloud and Architecture Controller
@@ -45,17 +44,15 @@ type NetworkCondition struct {
 }
 
 type ServiceResources struct {
-	CPUClock   float64 `json:"cpuClock"`   // unit GHz
-	Memory     float64 `json:"memory"`     // unit Byte (B)
-	Storage    float64 `json:"storage"`    // unit Byte (B)
-	NetLatency float64 `json:"netLatency"` // unit millisecond (ms)
+	CPUClock float64 `json:"cpuClock"` // unit GHz
+	Memory   float64 `json:"memory"`   // unit Byte (B)
+	Storage  float64 `json:"storage"`  // unit Byte (B)
 }
 
 type TaskResources struct {
-	CPUCycle   float64 `json:"cpuCycle"`   // unit number of CPU cycles needed to execute the task
-	Memory     float64 `json:"memory"`     // unit Byte (B)
-	Storage    float64 `json:"storage"`    // unit Byte (B)
-	NetLatency float64 `json:"netLatency"` // unit millisecond (ms)
+	CPUCycle float64 `json:"cpuCycle"` // unit number of CPU cycles needed to execute the task
+	Memory   float64 `json:"memory"`   // unit Byte (B)
+	Storage  float64 `json:"storage"`  // unit Byte (B)
 }
 
 type Dependence struct {

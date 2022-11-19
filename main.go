@@ -14,10 +14,10 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 10, 40
+	var numCloud, numApp int = 10, 30
 
 	// generate clouds and apps, and write to files
-	//experimenttools.GenerateCloudsApps(numCloud, numApp)
+	experimenttools.GenerateCloudsApps(numCloud, numApp)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
@@ -31,9 +31,40 @@ func main() {
 	//	log.Println(apps[i])
 	//}
 
+	//var CPUCapa, CPUReq, MemCapa, MemReq, StoCapa, StoReq, BWCapa, BWReq float64
+	//for i := 0; i < numCloud; i++ {
+	//	CPUCapa += clouds[i].Capacity.CPU.BaseClock * clouds[i].Capacity.CPU.LogicalCores
+	//	MemCapa += clouds[i].Capacity.Memory
+	//	StoCapa += clouds[i].Capacity.Storage
+	//	for j := 0; j < numCloud; j++ {
+	//		if j != i {
+	//			BWCapa += clouds[i].Capacity.NetCondClouds[j].DownBw
+	//		}
+	//	}
+	//}
+	//
+	//for i := 0; i < numApp; i++ {
+	//	if !apps[i].IsTask {
+	//		CPUReq += apps[i].SvcReq.CPUClock
+	//		MemReq += apps[i].SvcReq.Memory
+	//		StoReq += apps[i].SvcReq.Storage
+	//	} else {
+	//		MemReq += apps[i].TaskReq.Memory
+	//		StoReq += apps[i].TaskReq.Storage
+	//	}
+	//	for j := 0; j < len(apps[i].Depend); j++ {
+	//		BWReq += (apps[i].Depend[j].DownBw + apps[i].Depend[j].UpBw)
+	//	}
+	//}
+	//fmt.Println(CPUReq, CPUCapa, CPUReq/CPUCapa)
+	//fmt.Println(MemReq, MemCapa, MemReq/MemCapa)
+	//fmt.Println(StoReq, StoCapa, StoReq/StoCapa)
+	//fmt.Println(BWReq, BWCapa, BWReq/BWCapa)
+	//return
+
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.RandomFitSchedule, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.007, 500, algorithms.RandomFitSchedule, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {

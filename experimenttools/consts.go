@@ -258,6 +258,10 @@ var amdEpyc7002Series []cpuProcessor = []cpuProcessor{
 
 var (
 	depNumsToChoose []int     = []int{1, 2, 5, 3, 1, 1, 1, 2}
-	reqBwToChoose   []float64 = []float64{0.0098, 0.098, 1.0, 20.0, 1.0, 204.8, 2048.0, 10.0, 100.0} // unit Mb/s
-	reqRttToChoose  []float64 = []float64{2000, 2000, 2, 1000, 10, 20, 10, 10, 1}                    // unit ms
+	reqBwToChoose   []float64 = []float64{0.0098, 0.098, 1.0, 20.0, 1.0, 204.8, 2048.0, 10.0, 100.0}                                                                            // unit Mb/s
+	reqRttToChoose  []float64 = []float64{2000, 2000, 2, 1000, 10, 20, 10, 10, 1}                                                                                               // unit ms
+	resMemToChoose  []float64 = []float64{64, 64, 16, 16, 16, 16, 16, 16, 16, 64, 128, 128, 192, 256, 256, 16, 256, 192, 64, 32, 32, 64, 32, 32, 32, 32, 16, 32, 16, 32, 8, 16} // unit GB
+	resStorToChoose []float64 = []float64{500, 1024, 2048, 3072, 4096, 5120, 250, 250, 300, 350, 350}                                                                           // unit GB
+	reqMemToChoose  []float64 = []float64{1, 1, 2, 1, 0.48828125}                                                                                                               // unit GB
+	ReqStorToChoose []float64 = []float64{8, 4, 3, 2}                                                                                                                           // unit GB
 )

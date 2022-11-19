@@ -127,10 +127,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: false,
 			SvcReq: model.ServiceResources{
-				CPUClock:   50,
-				Memory:     50,
-				Storage:    50,
-				NetLatency: 50,
+				CPUClock: 50,
+				Memory:   50,
+				Storage:  50,
 			},
 			Priority: 500,
 			AppIdx:   0,
@@ -138,10 +137,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: false,
 			SvcReq: model.ServiceResources{
-				CPUClock:   15,
-				Memory:     15,
-				Storage:    15,
-				NetLatency: 15,
+				CPUClock: 15,
+				Memory:   15,
+				Storage:  15,
 			},
 			Priority: 1000,
 			AppIdx:   1,
@@ -149,10 +147,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: false,
 			SvcReq: model.ServiceResources{
-				CPUClock:   135,
-				Memory:     135,
-				Storage:    135,
-				NetLatency: 153,
+				CPUClock: 135,
+				Memory:   135,
+				Storage:  135,
 			},
 			Priority: 750,
 			AppIdx:   2,
@@ -160,10 +157,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: false,
 			SvcReq: model.ServiceResources{
-				CPUClock:   1352,
-				Memory:     1235,
-				Storage:    1325,
-				NetLatency: 1532,
+				CPUClock: 1352,
+				Memory:   1235,
+				Storage:  1325,
 			},
 			Priority: 751,
 			AppIdx:   3,
@@ -171,10 +167,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: false,
 			SvcReq: model.ServiceResources{
-				CPUClock:   352,
-				Memory:     235,
-				Storage:    325,
-				NetLatency: 532,
+				CPUClock: 352,
+				Memory:   235,
+				Storage:  325,
 			},
 			Priority: 8751,
 			AppIdx:   4,
@@ -182,10 +177,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: true,
 			TaskReq: model.TaskResources{
-				CPUCycle:   32,
-				Memory:     25,
-				Storage:    35,
-				NetLatency: 52,
+				CPUCycle: 32,
+				Memory:   25,
+				Storage:  35,
 			},
 			Priority: 851,
 			AppIdx:   5,
@@ -193,10 +187,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: true,
 			TaskReq: model.TaskResources{
-				CPUCycle:   832,
-				Memory:     825,
-				Storage:    835,
-				NetLatency: 852,
+				CPUCycle: 832,
+				Memory:   825,
+				Storage:  835,
 			},
 			Priority: 810,
 			AppIdx:   6,
@@ -204,10 +197,9 @@ func TestAcceptable(t *testing.T) {
 		model.Application{
 			IsTask: true,
 			TaskReq: model.TaskResources{
-				CPUCycle:   83,
-				Memory:     82,
-				Storage:    83,
-				NetLatency: 85,
+				CPUCycle: 83,
+				Memory:   82,
+				Storage:  83,
 			},
 			Priority: 111,
 			AppIdx:   7,
@@ -221,18 +213,16 @@ func TestAcceptable(t *testing.T) {
 					LogicalCores: 20,
 					BaseClock:    10000,
 				},
-				Memory:     10000,
-				Storage:    10000,
-				NetLatency: 0,
+				Memory:  10000,
+				Storage: 10000,
 			},
 			Allocatable: model.Resources{
 				CPU: model.CPUResource{
 					LogicalCores: 20,
 					BaseClock:    10000,
 				},
-				Memory:     10000,
-				Storage:    10000,
-				NetLatency: 0,
+				Memory:  10000,
+				Storage: 10000,
 			},
 		},
 		model.Cloud{
@@ -241,18 +231,16 @@ func TestAcceptable(t *testing.T) {
 					LogicalCores: 45,
 					BaseClock:    10000,
 				},
-				Memory:     10000,
-				Storage:    10000,
-				NetLatency: 0,
+				Memory:  10000,
+				Storage: 10000,
 			},
 			Allocatable: model.Resources{
 				CPU: model.CPUResource{
 					LogicalCores: 20,
 					BaseClock:    10000,
 				},
-				Memory:     10000,
-				Storage:    10000,
-				NetLatency: 0,
+				Memory:  10000,
+				Storage: 10000,
 			},
 		},
 	}

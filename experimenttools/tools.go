@@ -49,6 +49,7 @@ func generateResourceCPU(lowerBound, upperBound, miu, sigma float64, forCapacity
 	return float64(multiple_of_4_cores)
 }
 
+// randomly choose a CPUClock from some CPUs
 func generateResourceCPUCapacity(lowerBound, upperBound float64) float64 {
 	return float64(random.RandomInt(int(lowerBound), int(upperBound)))
 }
@@ -59,8 +60,28 @@ func generateResourceCPUCapacity(lowerBound, upperBound float64) float64 {
 //	return math.Pow(2, float64(power))
 //}
 
+// randomly choose a capacity of Memory, unit B
+func chooseResMem() float64 {
+	return resMemToChoose[random.RandomInt(0, len(resMemToChoose)-1)] * 1024 * 1024 * 1024
+}
+
+// randomly choose a capacity of Storage, unit B
+func chooseResStor() float64 {
+	return resStorToChoose[random.RandomInt(0, len(resStorToChoose)-1)] * 1024 * 1024 * 1024
+}
+
 func generateResourceMemoryStorageCapacity(lowerBound, upperBound float64) float64 {
 	return random.RandomFloat64(lowerBound, upperBound)
+}
+
+// randomly choose a request of Memory, unit B
+func chooseReqMem() float64 {
+	return reqMemToChoose[random.RandomInt(0, len(reqMemToChoose)-1)] * 1024 * 1024 * 1024
+}
+
+// randomly choose a capacity of Storage, unit B
+func chooseReqStor() float64 {
+	return ReqStorToChoose[random.RandomInt(0, len(ReqStorToChoose)-1)] * 1024 * 1024 * 1024
 }
 
 // memory and storage Byte, forRequest
