@@ -201,18 +201,17 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 		return 0
 	}
 
-	totalExecTime := clouds[chosenCloudIndex].TotalTaskComplTime
-	if totalExecTime == 0 {
-		totalExecTime = 1
-	}
-
 	if app.IsTask { // Task: minimize execution time
 		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
 			// find this app in RunningApps of this cloud
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
 				thisTaskCompleTime := clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
-				// Maximize ((t-Ta)/t + Aa) * priority
-				return ((totalExecTime-thisTaskCompleTime)/totalExecTime + 1) * float64(app.Priority)
+				// Maxmize (X - ta) * priority (if ta > X, we set ta = X)
+				thisFitness := (RejectExecTime - thisTaskCompleTime) * float64(app.Priority)
+				if thisFitness < 0 {
+					thisFitness = 0
+				}
+				return thisFitness
 			}
 		}
 		log.Panicln("Task, cannot find clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx")
@@ -220,9 +219,13 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
 			// find this app in RunningApps of this cloud
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
-				thisServiceExecTime := totalExecTime - clouds[chosenCloudIndex].RunningApps[i].StartTime
-				// Maximize (tb/t + Ab) *priority
-				return (thisServiceExecTime/totalExecTime + 1) * float64(app.Priority)
+				thisSvcStartTime := clouds[chosenCloudIndex].RunningApps[i].StartTime
+				//Maximize (X - tb) *priority (if tb > X, we set tb = X)
+				thisFitness := (RejectExecTime - thisSvcStartTime) * float64(app.Priority)
+				if thisFitness < 0 {
+					thisFitness = 0
+				}
+				return thisFitness
 			}
 		}
 		log.Panicln("Service, cannot find clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx")
@@ -610,9 +613,9 @@ func fixDependence(clouds []model.Cloud, apps []model.Application, chromosome Ch
 func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (model.Solution, error) {
 	// initialize a population
 	var initPopulation Population = g.initialize(clouds, apps)
-	for i, chromosome := range initPopulation {
-		log.Println(i, chromosome, len(chromosome))
-	}
+	//for i, chromosome := range initPopulation {
+	//	log.Println(i, chromosome, len(chromosome))
+	//}
 
 	//log.Println("---selection after initialization-------")
 	// there are IterationCount+1 iterations in total, this is the No. 0 iteration
