@@ -61,7 +61,7 @@ func (cmrs cpmpRecordSloce) Less(i, j int) bool {
 }
 
 func testParameters(crossoverProbability float64, mutationProbability float64) float64 {
-	var numCloud, numApp int = 10, 30
+	var numCloud, numApp int = 10, 40
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
