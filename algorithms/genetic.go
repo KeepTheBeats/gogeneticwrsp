@@ -45,6 +45,8 @@ type Genetic struct {
 	SelectableCloudsForApps [][]int
 
 	InitFunc func([]model.Cloud, []model.Application) []int // the function to initialize populations
+
+	RejectExecTime float64 // We set this time as the start time of rejected services and completion time of rejected tasks unit second
 }
 
 func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability float64, mutationProbability float64, stopNoUpdateIteration int, initFunc func([]model.Cloud, []model.Application) []int, clouds []model.Cloud, apps []model.Application) *Genetic {
@@ -92,7 +94,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 }
 
 // Fitness calculate the fitness value of this scheduling result, the fitness values is possibly less than 0
-func Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) float64 {
+func (g *Genetic) Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) float64 {
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
 	var appsCopy []model.Application = model.AppsCopy(apps)
 	CalcStartComplTime(deployedClouds, appsCopy, chromosome)
@@ -109,7 +111,7 @@ func Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromoso
 	appsCopy = model.AppsCopy(apps)
 	// the fitnessValue is based on each application
 	for appIndex := 0; appIndex < len(chromosome); appIndex++ {
-		fitnessValue += fitnessOneApp(deployedClouds, appsCopy[appIndex], chromosome[appIndex])
+		fitnessValue += g.fitnessOneApp(deployedClouds, appsCopy[appIndex], chromosome[appIndex])
 	}
 
 	return fitnessValue
@@ -196,7 +198,7 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 }
 
 // fitness of a single application, the fitness values is >= 0
-func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
+func (g *Genetic) fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
 	if chosenCloudIndex == len(clouds) {
 		return 0
 	}
@@ -207,7 +209,7 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
 				thisTaskCompleTime := clouds[chosenCloudIndex].RunningApps[i].TaskCompletionTime
 				// Maxmize (X - ta) * priority (if ta > X, we set ta = X)
-				thisFitness := (RejectExecTime - thisTaskCompleTime) * float64(app.Priority)
+				thisFitness := (g.RejectExecTime - thisTaskCompleTime) * float64(app.Priority)
 				if thisFitness < 0 {
 					thisFitness = 0
 				}
@@ -221,7 +223,7 @@ func fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
 				thisSvcStartTime := clouds[chosenCloudIndex].RunningApps[i].StartTime
 				//Maximize (X - tb) *priority (if tb > X, we set tb = X)
-				thisFitness := (RejectExecTime - thisSvcStartTime) * float64(app.Priority)
+				thisFitness := (g.RejectExecTime - thisSvcStartTime) * float64(app.Priority)
 				if thisFitness < 0 {
 					thisFitness = 0
 				}
@@ -368,7 +370,7 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 	// calculate the fitness of each chromosome in this population
 	var maxFitness, minFitness float64 = -math.MaxFloat64, math.MaxFloat64 // record the max and min for standardization
 	for i := 0; i < len(population); i++ {
-		fitness := Fitness(clouds, apps, population[i])
+		fitness := g.Fitness(clouds, apps, population[i])
 
 		fitnesses[i] = fitness
 		if fitness > maxFitness {
@@ -433,7 +435,7 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 		newPopulation = append(newPopulation, newChromosome)
 
 		// record the best fitness in this iteration
-		chosenFitness := Fitness(clouds, apps, population[selectedChromosomeIndex])
+		chosenFitness := g.Fitness(clouds, apps, population[selectedChromosomeIndex])
 		//log.Printf("selectedChromosomeIndex %d, population[selectedChromosomeIndex] %d, chosenFitness %f", selectedChromosomeIndex, population[selectedChromosomeIndex], chosenFitness)
 
 		if chosenFitness > bestFitnessInThisIteration {
@@ -610,12 +612,49 @@ func fixDependence(clouds []model.Cloud, apps []model.Application, chromosome Ch
 	}
 }
 
+func (g *Genetic) initRejectTime(clouds []model.Cloud, apps []model.Application, initPopulation Population) {
+	var nonZeroChroNum int
+	var complTimes []float64
+	for i := 0; i < len(initPopulation); i++ {
+		tmpClouds := model.CloudsCopy(clouds)
+		tmpApps := model.AppsCopy(apps)
+		tmpSolution := model.SolutionCopy(model.Solution{SchedulingResult: initPopulation[i]})
+
+		tmpClouds = SimulateDeploy(tmpClouds, tmpApps, tmpSolution)
+		CalcStartComplTime(tmpClouds, tmpApps, tmpSolution.SchedulingResult)
+		for j := 0; j < len(tmpClouds); j++ {
+			if tmpClouds[j].TotalTaskComplTime > 0 {
+				complTimes = append(complTimes, tmpClouds[j].TotalTaskComplTime)
+				nonZeroChroNum++
+			}
+
+		}
+	}
+
+	sort.Float64s(complTimes)
+
+	// after some tests these values of the parameters seem good
+	var cutRate float64 = 0.1
+	var longestPara float64 = 1.5
+	var averagePara float64 = 4
+	var timesPara float64 = 2 // to give difference between rejection and long execution time
+
+	var start, end int = int(float64(nonZeroChroNum) * cutRate), int(float64(nonZeroChroNum) * (1 - cutRate))
+	var totalMidRange float64 = 0
+	for i := start; i <= end; i++ {
+		totalMidRange += complTimes[i]
+	}
+	var midAve float64 = totalMidRange / float64(end-start+1)
+	g.RejectExecTime = timesPara * math.Min(complTimes[end]*longestPara, midAve*averagePara) // double insurance, in case that either of them is abnormal
+}
+
 func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (model.Solution, error) {
 	// initialize a population
 	var initPopulation Population = g.initialize(clouds, apps)
 	//for i, chromosome := range initPopulation {
 	//	log.Println(i, chromosome, len(chromosome))
 	//}
+	g.initRejectTime(clouds, apps, initPopulation)
 
 	//log.Println("---selection after initialization-------")
 	// there are IterationCount+1 iterations in total, this is the No. 0 iteration

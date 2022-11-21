@@ -15,7 +15,7 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 10, 30
+	var numCloud, numApp int = 9, 27
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
@@ -69,11 +69,23 @@ func main() {
 
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.007, 500, algorithms.RandomFitSchedule, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {
-		log.Printf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
+		//log.Printf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
+		log.Panicf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
+	}
+
+	tmpClouds := model.CloudsCopy(clouds)
+	tmpApps := model.AppsCopy(apps)
+	tmpSolution := model.SolutionCopy(solution)
+
+	tmpClouds = algorithms.SimulateDeploy(tmpClouds, tmpApps, tmpSolution)
+	algorithms.CalcStartComplTime(tmpClouds, tmpApps, tmpSolution.SchedulingResult)
+	log.Println("final, geneticAlgorithm.RejectExecTime:", geneticAlgorithm.RejectExecTime)
+	for j := 0; j < len(tmpClouds); j++ {
+		log.Println(tmpClouds[j].TotalTaskComplTime, len(tmpClouds[j].RunningApps))
 	}
 
 	//for i := 0; i < len(geneticAlgorithm.FitnessRecordIterationBest); i++ {
@@ -90,9 +102,6 @@ func main() {
 		log.Printf("Iteration %d: FitnessRecordBestAcceptableUntilNow: %f\n", int(geneticAlgorithm.BestAcceptableUntilNowUpdateIterations[i]), geneticAlgorithm.FitnessRecordBestAcceptableUntilNow[i])
 	}
 
-	if err != nil {
-		log.Printf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
-	}
 	log.Println("solution:", solution)
 
 	// draw geneticAlgorithm.FitnessRecordIterationBest and geneticAlgorithm.FitnessRecordBestUntilNow on a line chart
