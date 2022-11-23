@@ -202,7 +202,7 @@ func GenerateApps(numApp int, suffix string, taskProportion float64) {
 		}
 
 		// make sure that the priorities in orderedApps before CurOrderedIdx are higher than CurOrderedIdx's priority (cannot be equal)
-		for CurOrderedIdx-1 > 0 && orderedApps[CurOrderedIdx].Priority == orderedApps[CurOrderedIdx-1].Priority {
+		for CurOrderedIdx-1 >= 0 && orderedApps[CurOrderedIdx].Priority == orderedApps[CurOrderedIdx-1].Priority {
 			CurOrderedIdx--
 		}
 
