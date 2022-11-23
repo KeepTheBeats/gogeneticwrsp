@@ -1,5 +1,5 @@
-github.com/KeepTheBeats/routing-algorithms v0.0.0-20221117175443-0286b1d4a417 h1:xBSE4a71ju9iuf06dq93Oe+JARVlSzFcZAPADhi4xFI=
-github.com/KeepTheBeats/routing-algorithms v0.0.0-20221117175443-0286b1d4a417/go.mod h1:G7ajMrvkpethnf2dZYRA+8gwfnF/p3JdD//PBdENr+M=
+github.com/KeepTheBeats/routing-algorithms v0.0.0-20221123203558-62929d0c2ea0 h1:XvyQ+UkI4icigpIn8N5nqo1LxOSWQtPvj7EWUxl1F3o=
+github.com/KeepTheBeats/routing-algorithms v0.0.0-20221123203558-62929d0c2ea0/go.mod h1:G7ajMrvkpethnf2dZYRA+8gwfnF/p3JdD//PBdENr+M=
 github.com/blend/go-sdk v1.20220411.3 h1:GFV4/FQX5UzXLPwWV03gP811pj7B8J2sbuq+GJQofXc=
 github.com/blend/go-sdk v1.20220411.3/go.mod h1:7lnH8fTi6U4i1fArEXRyOIY2E1X4MALg09qsQqY1+ak=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=

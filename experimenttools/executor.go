@@ -326,6 +326,65 @@ func ReadApps(numApp int, suffix string) []model.Application {
 	return apps
 }
 
+type NumTimeGroup struct {
+	NumInGroup    []int           `json:"numInGroup"`
+	TimeIntervals []time.Duration `json:"timeIntervals"`
+}
+
+// GenerateNumTimeGroup generates the number of apps in app groups and time intervals between groups
+func GenerateNumTimeGroup(groupNum int) {
+	var numTime NumTimeGroup = NumTimeGroup{
+		NumInGroup:    make([]int, groupNum),
+		TimeIntervals: make([]time.Duration, groupNum),
+	}
+
+	for i := 0; i < groupNum; i++ {
+		numTime.NumInGroup[i] = genAppNumGroup()
+		numTime.TimeIntervals[i] = time.Duration(genTimeIntervalGroups()) * time.Second
+	}
+
+	numTimeJson, err := json.Marshal(numTime)
+	if err != nil {
+		log.Fatalln("numTimeJson, err := json.Marshal(numTime) error:", err.Error())
+	}
+
+	var numTimePath string = getNumTimeFilePaths(groupNum)
+
+	err = ioutil.WriteFile(numTimePath, numTimeJson, 0777)
+	if err != nil {
+		log.Fatalln("ioutil.WriteFile(numTimePath, numTimeJson, 0777) error:", err.Error())
+	}
+
+}
+
+func getNumTimeFilePaths(groupNum int) string {
+	var numTimePath string
+	if runtime.GOOS == "windows" {
+		numTimePath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experimenttools\\numtime_%d.json", build.Default.GOPATH, groupNum)
+	} else {
+		numTimePath = fmt.Sprintf("%s/src/gogeneticwrsp/experimenttools/numtime_%d.json", build.Default.GOPATH, groupNum)
+	}
+	return numTimePath
+}
+
+// ReadNumTimeGroup from the file
+func ReadNumTimeGroup(groupNum int) NumTimeGroup {
+	var numTimePath string = getNumTimeFilePaths(groupNum)
+	var numTime NumTimeGroup
+
+	numTimeJson, err := ioutil.ReadFile(numTimePath)
+	if err != nil {
+		log.Fatalln("ioutil.ReadFile(numTimePath) error:", err.Error())
+	}
+
+	err = json.Unmarshal(numTimeJson, &numTime)
+	if err != nil {
+		log.Fatalln("json.Unmarshal(numTimeJson, &numTime) error:", err.Error())
+	}
+
+	return numTime
+}
+
 type OneTimeHelper struct {
 	Name                string
 	ExperimentAlgorithm algorithms.SchedulingAlgorithm
@@ -390,6 +449,63 @@ type ContinuousHelper struct {
 	CloudsWithTime        [][]float64
 	AllAppComplTime       []float64
 	AllAppComplTimePerPri []float64
+
+	SvcSusTime       []float64 // record the weighted suspension time of every service
+	TaskComplTime    []float64 // record the weighted time since generated until completed of every task
+	maxSvcSusTime    float64
+	maxTaskComplTime float64
+}
+
+// we use the priority of each app as the weight of each time value
+func (ch *ContinuousHelper) setSvcSusTaskComplTime(clouds []model.Cloud, totalApps []model.Application, currentSolution model.Solution) {
+	ch.maxTaskComplTime, ch.maxSvcSusTime = 0, 0
+	for i := 0; i < len(totalApps); i++ {
+		if totalApps[i].IsTask {
+			if currentSolution.SchedulingResult[i] != len(clouds) {
+				ch.TaskComplTime = append(ch.TaskComplTime, (totalApps[i].TaskFinalComplTime-totalApps[i].GeneratedTime)*float64(totalApps[i].Priority)*0.00001) // priority*0.00001 is the weight
+				if ch.TaskComplTime[len(ch.TaskComplTime)-1] > ch.maxTaskComplTime {
+					ch.maxTaskComplTime = ch.TaskComplTime[len(ch.TaskComplTime)-1]
+				}
+			} else { // if rejected set it as -1, calculating later
+				ch.TaskComplTime = append(ch.TaskComplTime, -1)
+			}
+		} else {
+			if currentSolution.SchedulingResult[i] != len(clouds) {
+				ch.SvcSusTime = append(ch.SvcSusTime, totalApps[i].SvcSuspensionTime*float64(totalApps[i].Priority)*0.00001) // priority*0.00001 is the weight
+				if ch.SvcSusTime[len(ch.SvcSusTime)-1] > ch.maxSvcSusTime {
+					ch.maxSvcSusTime = ch.SvcSusTime[len(ch.SvcSusTime)-1]
+				}
+			} else { // if rejected set it as -1, calculating later
+				ch.SvcSusTime = append(ch.SvcSusTime, -1)
+			}
+		}
+	}
+}
+
+// set the service suspension time and task completion time of rejected apps as very high
+func setRejectedSvcTask(recorders ...*ContinuousHelper) {
+	var totalMaxSvcSus, totalMaxTaskCompl float64 = 0, 0
+	for _, recorder := range recorders {
+		if (*recorder).maxSvcSusTime > totalMaxSvcSus {
+			totalMaxSvcSus = (*recorder).maxSvcSusTime
+		}
+		if (*recorder).maxTaskComplTime > totalMaxTaskCompl {
+			totalMaxTaskCompl = (*recorder).maxTaskComplTime
+		}
+	}
+
+	for _, recorder := range recorders {
+		for i := 0; i < len((*recorder).SvcSusTime); i++ {
+			if (*recorder).SvcSusTime[i] == -1 {
+				(*recorder).SvcSusTime[i] = totalMaxSvcSus * 1.1
+			}
+		}
+		for i := 0; i < len((*recorder).TaskComplTime); i++ {
+			if (*recorder).TaskComplTime[i] == -1 {
+				(*recorder).TaskComplTime[i] = totalMaxTaskCompl * 1.1
+			}
+		}
+	}
 }
 
 // ContinuousExperiment is that the applications are deployed one by one. In one time, we only handle one application.
@@ -429,6 +545,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		CloudsWithTime:              make([][]float64, 0),
 		AllAppComplTime:             make([]float64, 0),
 		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
 	}
 	var randomFitRecorder ContinuousHelper = ContinuousHelper{
 		Name:                        "Random Fit",
@@ -442,6 +560,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		CloudsWithTime:              make([][]float64, 0),
 		AllAppComplTime:             make([]float64, 0),
 		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
 	}
 	// Multi-cloud Applications Scheduling Genetic Algorithm (MCASGA)
 	var MCASGARecorder ContinuousHelper = ContinuousHelper{
@@ -456,6 +576,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		CloudsWithTime:              make([][]float64, 0),
 		AllAppComplTime:             make([]float64, 0),
 		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
 	}
 
 	// First Fit
@@ -467,7 +589,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 	for i := 0; i < len(apps); i++ {
 		currentTime += appArrivalTimeIntervals[i]
-		log.Println("currentTime", float64(currentTime)/float64(time.Second))
+		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
 
 		// the ith applications group request comes
 		totalApps = model.CombApps(totalApps, apps[i])
@@ -525,6 +647,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		}
 		firstFitRecorder.CloudsWithTime = append(firstFitRecorder.CloudsWithTime, thisTimeRecord)
 		firstFitRecorder.AllAppComplTime = append(firstFitRecorder.AllAppComplTime, longestTime)
+		log.Println("thisTimeRecord", thisTimeRecord)
 		log.Println("firstFitRecorder.AllAppComplTime", firstFitRecorder.AllAppComplTime)
 
 		// add the solution of this app to current solution
@@ -551,6 +674,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 		firstFitRecorder.AllAppComplTimePerPri = append(firstFitRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
 	}
+	// For firstFit, record the service suspension time and task completion time
+	firstFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
 
 	// Random Fit
 	currentClouds = model.CloudsCopy(clouds)
@@ -561,7 +686,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 	for i := 0; i < len(apps); i++ {
 		currentTime += appArrivalTimeIntervals[i]
-		log.Println("currentTime", float64(currentTime)/float64(time.Second))
+		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
 
 		// the ith applications group request comes
 		totalApps = model.CombApps(totalApps, apps[i])
@@ -618,6 +743,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		}
 		randomFitRecorder.CloudsWithTime = append(randomFitRecorder.CloudsWithTime, thisTimeRecord)
 		randomFitRecorder.AllAppComplTime = append(randomFitRecorder.AllAppComplTime, longestTime)
+		log.Println("thisTimeRecord", thisTimeRecord)
 		log.Println("randomFitRecorder.AllAppComplTime", randomFitRecorder.AllAppComplTime)
 
 		// add the solution of this app to current solution
@@ -644,6 +770,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 		randomFitRecorder.AllAppComplTimePerPri = append(randomFitRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
 	}
+	// For randomFit, record the service suspension time and task completion time
+	randomFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
 
 	// MCASGA
 	currentClouds = model.CloudsCopy(clouds)
@@ -659,7 +787,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 	for i := 0; i < len(apps); i++ {
 		currentTime += appArrivalTimeIntervals[i]
-		log.Println("currentTime", float64(currentTime)/float64(time.Second))
+		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
 
 		var appsToDeploy []model.Application
 
@@ -733,7 +861,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		}
 		MCASGARecorder.CloudsWithTime = append(MCASGARecorder.CloudsWithTime, thisTimeRecord)
 		MCASGARecorder.AllAppComplTime = append(MCASGARecorder.AllAppComplTime, longestTime)
-
+		log.Println("thisTimeRecord", thisTimeRecord)
 		log.Println("MCASGARecorder.AllAppComplTime", MCASGARecorder.AllAppComplTime)
 
 		lastSolution = model.SolutionCopy(solution)
@@ -766,17 +894,24 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 		MCASGARecorder.AllAppComplTimePerPri = append(MCASGARecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, totalSolution.SchedulingResult)))
 	}
+	// For MCASGA, record the service suspension time and task completion time
+	MCASGARecorder.setSvcSusTaskComplTime(clouds, totalApps, totalSolution)
+	// after the service suspension time and task completion time in 3 recorders are set, we handle the rejected apps
+	setRejectedSvcTask(&firstFitRecorder, &randomFitRecorder, &MCASGARecorder)
 
 	log.Println("MCASGA solution:", totalSolution.SchedulingResult)
 
+	currentTime = 0 * time.Second
 	// output csv files
 	generateCsvFunc := func(recorder ContinuousHelper) [][]string {
 		var csvContent [][]string
-		csvContent = append(csvContent, []string{"Number of Applications", "CPUClock Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Bandwidth Idle Rate", "Application Acceptance Rate", "Service Acceptance Rate", "Task Acceptance Rate", "Completion Time", "Completion Time Per Priority"})
+		csvContent = append(csvContent, []string{"Number of Applications", "Number of New Applications", "Time", "CPUClock Idle Rate", "Memory Idle Rate", "Storage Idle Rate", "Bandwidth Idle Rate", "Application Acceptance Rate", "Service Acceptance Rate", "Task Acceptance Rate", "Completion Time", "Completion Time Per Priority"})
 		appNum := 0
+		currentTime = 0 * time.Second
 		for i := 0; i < len(apps); i++ {
 			appNum += len(apps[i])
-			csvContent = append(csvContent, []string{fmt.Sprintf("%d", appNum), fmt.Sprintf("%f", recorder.CPUIdleRecords[i]), fmt.Sprintf("%f", recorder.MemoryIdleRecords[i]), fmt.Sprintf("%f", recorder.StorageIdleRecords[i]), fmt.Sprintf("%f", recorder.BwIdleRecords[i]), fmt.Sprintf("%f", recorder.AcceptedPriorityRateRecords[i]), fmt.Sprintf("%f", recorder.AcceptedSvcPriRateRecords[i]), fmt.Sprintf("%f", recorder.AllAppComplTime[i]), fmt.Sprintf("%f", recorder.AllAppComplTime[i]), fmt.Sprintf("%f", recorder.AllAppComplTimePerPri[i])})
+			currentTime += appArrivalTimeIntervals[i]
+			csvContent = append(csvContent, []string{fmt.Sprintf("%d", appNum), fmt.Sprintf("%d", len(apps[i])), fmt.Sprintf("%.0f", float64(currentTime)/float64(time.Second)), fmt.Sprintf("%f", recorder.CPUIdleRecords[i]), fmt.Sprintf("%f", recorder.MemoryIdleRecords[i]), fmt.Sprintf("%f", recorder.StorageIdleRecords[i]), fmt.Sprintf("%f", recorder.BwIdleRecords[i]), fmt.Sprintf("%f", recorder.AcceptedPriorityRateRecords[i]), fmt.Sprintf("%f", recorder.AcceptedSvcPriRateRecords[i]), fmt.Sprintf("%f", recorder.AcceptedTaskPriRateRecords[i]), fmt.Sprintf("%f", recorder.AllAppComplTime[i]), fmt.Sprintf("%f", recorder.AllAppComplTimePerPri[i])})
 		}
 		return csvContent
 	}
@@ -814,8 +949,28 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 	writeFileFunc(csvPathFunc(randomFitRecorder.Name), rfCsvContent)
 	writeFileFunc(csvPathFunc(MCASGARecorder.Name), MCASGACsvContent)
 
-	// draw line charts
+	// write cdf csv file of service suspension time and task completion time
+	// output csv files
+	genSvcCdfCsvFunc := func() [][]string {
+		var csvContent [][]string
+		csvContent = append(csvContent, []string{"First Fit Weighted Service Suspension Time", "Random Fit Weighted Service Suspension Time", "MCASGA Weighted Service Suspension Time"})
+		for i := 0; i < len(firstFitRecorder.SvcSusTime); i++ {
+			csvContent = append(csvContent, []string{fmt.Sprintf("%g", firstFitRecorder.SvcSusTime[i]), fmt.Sprintf("%g", randomFitRecorder.SvcSusTime[i]), fmt.Sprintf("%g", MCASGARecorder.SvcSusTime[i])})
+		}
+		return csvContent
+	}
+	genTaskCdfCsvFunc := func() [][]string {
+		var csvContent [][]string
+		csvContent = append(csvContent, []string{"First Fit Weighted Task Completion Time", "Random Fit Weighted Task Completion Time", "MCASGA Weighted Task Completion Time"})
+		for i := 0; i < len(firstFitRecorder.TaskComplTime); i++ {
+			csvContent = append(csvContent, []string{fmt.Sprintf("%g", firstFitRecorder.TaskComplTime[i]), fmt.Sprintf("%g", randomFitRecorder.TaskComplTime[i]), fmt.Sprintf("%g", MCASGARecorder.TaskComplTime[i])})
+		}
+		return csvContent
+	}
+	writeFileFunc(csvPathFunc("svc_cdf"), genSvcCdfCsvFunc())
+	writeFileFunc(csvPathFunc("task_cdf"), genTaskCdfCsvFunc())
 
+	// draw line charts
 	var ticks []chart.Tick
 	var xValues []float64
 	for i := 0; i < len(apps); i++ {
@@ -1296,7 +1451,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 			},
 			YAxis: chart.YAxis{
 				AxisType:  chart.YAxisSecondary,
-				Name:      "Completion Time Per Priority",
+				Name:      "Completion Time Per Priority (s)",
 				NameStyle: chart.StyleShow(),
 				Style:     chart.StyleShow(),
 			},

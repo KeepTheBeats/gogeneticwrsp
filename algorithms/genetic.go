@@ -688,10 +688,17 @@ func (g *Genetic) initRejectTime(clouds []model.Cloud, apps []model.Application,
 	sort.Float64s(complTimes)
 
 	// after some tests these values of the parameters seem good
+	// high acceptance
 	var cutRate float64 = 0.1
 	var longestPara float64 = 1.5
 	var averagePara float64 = 4
 	var timesPara float64 = 2 // to give difference between rejection and long execution time
+
+	//// lower application consuming time, these are bad!!!!!!
+	//var cutRate float64 = 0.1
+	//var longestPara float64 = 1
+	//var averagePara float64 = 2
+	//var timesPara float64 = 2 // to give difference between rejection and long execution time
 
 	var start, end int = int(float64(nonZeroChroNum) * cutRate), int(float64(nonZeroChroNum) * (1 - cutRate))
 	var totalMidRange float64 = 0

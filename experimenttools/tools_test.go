@@ -103,3 +103,17 @@ func TestInnerGeneratePriority(t *testing.T) {
 		fmt.Println(generatePriority(100, 65535.9, 150, 300))
 	}
 }
+
+func TestInnerGenAppNumGroup(t *testing.T) {
+	fmt.Println("Generate 40 numbers of applications in an app group:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(genAppNumGroup())
+	}
+}
+
+func TestInnerGenTimeIntervalGroups(t *testing.T) {
+	fmt.Println("Generate 40 time intervals between 2 app groups:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(genTimeIntervalGroups())
+	}
+}

@@ -21,10 +21,15 @@ func main() {
 	log.SetFlags(0 | log.Lshortfile)
 
 	var numCloud int = 10
-	var numInGroup []int = []int{6, 9, 19, 13, 7, 10, 6} // total 70
-	var appArrivalTimeIntervals []time.Duration = []time.Duration{0 * time.Second, 20 * time.Second, 30 * time.Second, 30 * time.Second, 15 * time.Second, 15 * time.Second, 15 * time.Second}
-	//var numCloud int = 10
-	//var numInGroup []int = []int{3, 4, 5, 6, 3, 5, 4} // total 30
+	var groupNum int = 10
+	experimenttools.GenerateNumTimeGroup(groupNum)
+
+	var numTime experimenttools.NumTimeGroup = experimenttools.ReadNumTimeGroup(groupNum)
+	var numInGroup []int = numTime.NumInGroup
+	var appArrivalTimeIntervals []time.Duration = numTime.TimeIntervals
+
+	//var numInGroup []int = []int{6, 9, 19, 13, 7, 10, 6} // total 70
+	//var appArrivalTimeIntervals []time.Duration = []time.Duration{0 * time.Second, 20 * time.Second, 30 * time.Second, 30 * time.Second, 15 * time.Second, 15 * time.Second, 15 * time.Second}
 
 	// generate clouds and apps, and write to files
 	experimenttools.GenerateClouds(numCloud)

@@ -163,3 +163,13 @@ func generateImageSize() float64 {
 func generatePriority(lowerBound, upperBound, miu, sigma float64) uint16 {
 	return uint16(random.NormalRandomBM(lowerBound, upperBound, miu, sigma))
 }
+
+// generate the number of applications in an app group
+func genAppNumGroup() int {
+	return random.RandomInt(4, 14) // 4 and 14 are from related works
+}
+
+// generate the time interval between 2 app groups
+func genTimeIntervalGroups() float64 {
+	return random.ExponentialRandom(0, math.MaxFloat64, 1.0/15.0)
+}

@@ -3,7 +3,7 @@ module gogeneticwrsp
 go 1.18
 
 require (
-	github.com/KeepTheBeats/routing-algorithms v0.0.0-20221117175443-0286b1d4a417
+	github.com/KeepTheBeats/routing-algorithms v0.0.0-20221123203558-62929d0c2ea0
 	github.com/stretchr/testify v1.8.0
 	github.com/wcharczuk/go-chart v2.0.1+incompatible
 )
