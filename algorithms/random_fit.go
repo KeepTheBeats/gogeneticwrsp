@@ -20,9 +20,17 @@ func (rf *RandomFit) Schedule(clouds []model.Cloud, apps []model.Application) (m
 func RandomFitSchedule(clouds []model.Cloud, apps []model.Application) []int {
 	var schedulingResult []int = make([]int, len(apps))
 
-	// set all applications undeployed
+	// set all new applications undeployed, old application to their previous clouds
+	var noMigrate map[int]struct{} = make(map[int]struct{})
 	for i := 0; i < len(apps); i++ {
-		schedulingResult[i] = len(clouds)
+		if apps[i].IsNew { // new apps are allowed to be rejected
+			schedulingResult[i] = len(clouds)
+		} else { // remaining apps are not allowed to be rejected
+			schedulingResult[i] = apps[i].CloudRemainingOn
+			if !apps[i].CanMigrate { // executing tasks and their dependent apps cannot be migrated
+				noMigrate[i] = struct{}{}
+			}
+		}
 	}
 
 	// traverse apps in random order
@@ -32,7 +40,11 @@ func RandomFitSchedule(clouds []model.Cloud, apps []model.Application) []int {
 	}
 
 	for len(undeployed) > 0 {
-		appIndex := random.RandomInt(0, len(undeployed)-1) // appIndex in undeployed
+		appIndex := random.RandomInt(0, len(undeployed)-1)      // appIndex in undeployed
+		if _, exist := noMigrate[undeployed[appIndex]]; exist { // executing tasks and their dependent apps cannot be migrated
+			undeployed = append(undeployed[:appIndex], undeployed[appIndex+1:]...)
+			continue
+		}
 
 		// traverse clouds in random order
 		var untried []int = make([]int, len(clouds))
@@ -52,7 +64,11 @@ func RandomFitSchedule(clouds []model.Cloud, apps []model.Application) []int {
 				untried = append(untried[:cloudIndex], untried[cloudIndex+1:]...)
 				break
 			}
-			schedulingResult[undeployed[appIndex]] = len(clouds)
+			if apps[undeployed[appIndex]].IsNew {
+				schedulingResult[undeployed[appIndex]] = len(clouds)
+			} else { // old apps cannot be rejected
+				schedulingResult[undeployed[appIndex]] = apps[undeployed[appIndex]].CloudRemainingOn
+			}
 			untried = append(untried[:cloudIndex], untried[cloudIndex+1:]...)
 		}
 

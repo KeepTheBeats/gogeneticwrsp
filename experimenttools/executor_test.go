@@ -16,7 +16,7 @@ func TestGenerateCloudsApps(t *testing.T) {
 	var n int = 5
 	for i := 0; i < n; i++ {
 		numApps := random.RandomInt(3, 6)
-		GenerateApps(numApps, fmt.Sprintf("%d", i))
+		GenerateApps(numApps, fmt.Sprintf("%d", i), 0.5)
 	}
 }
 
@@ -26,7 +26,7 @@ func TestNoChangeMCASGA(t *testing.T) {
 
 	// generate clouds and apps, and write to files
 	GenerateClouds(numCloud)
-	GenerateApps(numApp, appSuffix)
+	GenerateApps(numApp, appSuffix, 0.5)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
@@ -71,7 +71,7 @@ func TestNoChangeFirstFit(t *testing.T) {
 
 	// generate clouds and apps, and write to files
 	GenerateClouds(numCloud)
-	GenerateApps(numApp, appSuffix)
+	GenerateApps(numApp, appSuffix, 0.5)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
@@ -106,7 +106,7 @@ func TestNoChangeRandomFit(t *testing.T) {
 
 	// generate clouds and apps, and write to files
 	GenerateClouds(numCloud)
-	GenerateApps(numApp, appSuffix)
+	GenerateApps(numApp, appSuffix, 0.5)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud

@@ -56,6 +56,20 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 
 	selectableCloudsForApps := make([][]int, len(apps))
 	for i := 0; i < len(apps); i++ {
+		if !apps[i].IsNew { // remaining apps, cannot be rejected
+			if !apps[i].CanMigrate { // executing tasks and their dependent apps cannot be migrated
+				selectableCloudsForApps[i] = append(selectableCloudsForApps[i], apps[i].CloudRemainingOn)
+			} else {
+				for j := 0; j < len(clouds); j++ {
+					if CloudMeetApp(clouds[j], apps[i]) {
+						selectableCloudsForApps[i] = append(selectableCloudsForApps[i], j)
+					}
+				}
+			}
+			continue
+		}
+
+		// new apps
 		selectableCloudsForApps[i] = append(selectableCloudsForApps[i], len(clouds))
 		for j := 0; j < len(clouds); j++ {
 			if CloudMeetApp(clouds[j], apps[i]) {
@@ -119,7 +133,7 @@ func (g *Genetic) Fitness(clouds []model.Cloud, apps []model.Application, chromo
 
 // CalcStartComplTime calculate the completion time of all tasks on all clouds, and the start time of all applications
 // slice of Golang is a reference (address/pointer), so we can change the contents in the function
-func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) {
+func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) []model.Application {
 	// initialization
 	for i := 0; i < len(clouds); i++ {
 		clouds[i].TotalTaskComplTime = 0
@@ -158,8 +172,18 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 
 				// calculate image pulling time, 1 Byte = 8 bits
 				imagePullTime := (clouds[cloudIndex].RunningApps[i].ImageSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondImage.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondImage.RTT / 1000) // unit: second
+
+				// An old app with image pulling done on the old cloud, image will already exist
+				if !clouds[cloudIndex].RunningApps[i].IsNew && clouds[cloudIndex].RunningApps[i].ImagePullDone && cloudIndex == clouds[cloudIndex].RunningApps[i].CloudRemainingOn {
+					imagePullTime = 0
+				}
+
 				// calculate time of transmitting data from Architecture Controller to this cloud, 1 Byte = 8 bits
 				dataInputTime := (clouds[cloudIndex].RunningApps[i].InputDataSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondController.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondController.RTT / 1000) // unit: second
+
+				// set image pull done time
+				clouds[cloudIndex].RunningApps[i].ImagePullDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime
+				unorderedApps[apps[k].AppIdx].ImagePullDoneTime = unorderedApps[apps[k].AppIdx].StartTime + imagePullTime
 
 				if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
 					// task execution time
@@ -194,7 +218,7 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 	//	fmt.Println("]")
 	//}
 	//time.Sleep(100 * time.Second)
-
+	return unorderedApps
 }
 
 // fitness of a single application, the fitness values is >= 0
@@ -599,6 +623,9 @@ func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Applicatio
 // fix dependence for a chromosome, avoiding regenerating due to invalid.
 // regenerating means restart to evolve
 func fixDependence(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) {
+	// sometimes when we fix a dependence, we change an app A to be rejected, then we should also change the apps depending on A to be rejected in the following cycles
+	var oldAccepted []int
+	var newAccepted []int
 	for i := 0; i < len(apps); i++ {
 		if chromosome[i] == len(clouds) {
 			continue
@@ -608,6 +635,33 @@ func fixDependence(clouds []model.Cloud, apps []model.Application, chromosome Ch
 				chromosome[i] = len(clouds)
 				break
 			}
+		}
+		if chromosome[i] != len(clouds) {
+			oldAccepted = append(oldAccepted, i)
+			newAccepted = append(newAccepted, i)
+		}
+	}
+
+	for {
+		//if len(oldAccepted) != len(newAccepted) {
+		//	fmt.Println("old", oldAccepted)
+		//	fmt.Println("new", newAccepted)
+		//}
+		oldAccepted = newAccepted
+		newAccepted = make([]int, 0)
+		for i := 0; i < len(oldAccepted); i++ {
+			for j := 0; j < len(apps[oldAccepted[i]].Depend); j++ {
+				if chromosome[apps[oldAccepted[i]].Depend[j].AppIdx] == len(clouds) {
+					chromosome[oldAccepted[i]] = len(clouds)
+					break
+				}
+			}
+			if chromosome[oldAccepted[i]] != len(clouds) {
+				newAccepted = append(newAccepted, oldAccepted[i])
+			}
+		}
+		if len(oldAccepted) == len(newAccepted) {
+			break
 		}
 	}
 }
@@ -649,12 +703,29 @@ func (g *Genetic) initRejectTime(clouds []model.Cloud, apps []model.Application,
 }
 
 func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (model.Solution, error) {
+	// make sure that all time attributes of each app are 0
+	for i := 0; i < len(apps); i++ {
+		if apps[i].StartTime != 0 {
+			log.Panicf("apps[%d].StartTime is %g", i, apps[i].StartTime)
+		}
+		if apps[i].ImagePullDoneTime != 0 {
+			log.Panicf("apps[%d].ImagePullDoneTime is %g", i, apps[i].ImagePullDoneTime)
+		}
+		if apps[i].TaskCompletionTime != 0 {
+			log.Panicf("apps[%d].TaskCompletionTime is %g", i, apps[i].TaskCompletionTime)
+		}
+		//apps[i].StartTime = 0
+		//apps[i].ImagePullDoneTime = 0
+		//apps[i].TaskCompletionTime = 0
+	}
+
 	// initialize a population
 	var initPopulation Population = g.initialize(clouds, apps)
 	//for i, chromosome := range initPopulation {
 	//	log.Println(i, chromosome, len(chromosome))
 	//}
 	g.initRejectTime(clouds, apps, initPopulation)
+	log.Println("g.RejectExecTime:", g.RejectExecTime)
 
 	//log.Println("---selection after initialization-------")
 	// there are IterationCount+1 iterations in total, this is the No. 0 iteration
@@ -672,7 +743,28 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 		//}
 
 		for i := 0; i < len(currentPopulation); i++ {
+			//for j := 0; j < len(currentPopulation[i]); j++ {
+			//	if currentPopulation[i][j] == len(clouds) {
+			//		continue
+			//	}
+			//	for k := 0; k < len(apps[j].Depend); k++ {
+			//		if currentPopulation[i][apps[j].Depend[k].AppIdx] == len(clouds) {
+			//			log.Println("before fix")
+			//			log.Println(j, k, currentPopulation[i][j], currentPopulation[i][apps[j].Depend[k].AppIdx])
+			//		}
+			//	}
+			//}
 			fixDependence(clouds, apps, currentPopulation[i])
+			for j := 0; j < len(currentPopulation[i]); j++ {
+				if currentPopulation[i][j] == len(clouds) {
+					continue
+				}
+				for k := 0; k < len(apps[j].Depend); k++ {
+					if currentPopulation[i][apps[j].Depend[k].AppIdx] == len(clouds) {
+						log.Panicln(j, k, currentPopulation[i][j], currentPopulation[i][apps[j].Depend[k].AppIdx])
+					}
+				}
+			}
 		}
 
 		//log.Printf("--------mutation in iteration %d-------\n", iteration)
@@ -685,6 +777,16 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 		//for i, chromosome := range currentPopulation {
 		//	log.Println(i, chromosome)
 		//}
+
+		clouds1 := model.CloudsCopy(clouds)
+		apps1 := model.AppsCopy(apps)
+		solution1 := model.SolutionCopy(model.Solution{
+			SchedulingResult: g.BestAcceptableUntilNow,
+		})
+		//log.Println(Acceptable(clouds1, apps1, solution1.SchedulingResult))
+		if !Acceptable(clouds1, apps1, solution1.SchedulingResult) {
+			log.Panicln()
+		}
 
 		// if at least one acceptable solution has been found, and if the best fitness until now has not been updated for a certain number of iterations, we think that the solution is already stable enough, and stop the algorithm
 		if len(g.BestAcceptableUntilNowUpdateIterations) > 1 && float64(iteration)-g.BestUntilNowUpdateIterations[len(g.BestUntilNowUpdateIterations)-1] > float64(g.StopNoUpdateIteration) {

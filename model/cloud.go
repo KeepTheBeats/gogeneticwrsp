@@ -10,7 +10,7 @@ type Cloud struct {
 	Allocatable        Resources     `json:"allocatable"` // allocatable resources
 	TmpAlloc           Resources     `json:"tmpAlloc"`    // temporary allocatable resources, for temporary record during scheduling
 	RunningApps        []Application `json:"runningApps"`
-	TotalTaskComplTime float64       `json:"totalTaskComplTime"`
+	TotalTaskComplTime float64       `json:"totalTaskComplTime"` // unit second
 	UpdateTime         time.Time     `json:"updateTime"`
 }
 
@@ -31,4 +31,15 @@ func CloudCopy(src Cloud) Cloud {
 	dst.TmpAlloc = ResCopy(src.TmpAlloc)
 	dst.RunningApps = AppsCopy(src.RunningApps)
 	return dst
+}
+
+// RefreshTime
+// in real scenarios, we can use d <= 0 to update time;
+// in simulated scenarios, we can use d > 0 simulate updating time
+func (c *Cloud) RefreshTime(d time.Duration) {
+	if d <= 0 { // for real use
+		c.UpdateTime = time.Now()
+	} else {
+		c.UpdateTime = c.UpdateTime.Add(d)
+	}
 }

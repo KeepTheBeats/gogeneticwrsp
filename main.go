@@ -15,13 +15,13 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 9, 27
+	var numCloud, numApp int = 9, 40
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
 	//experimenttools.GenerateCloudsApps(numCloud, numApp, appSuffix)
 	experimenttools.GenerateClouds(numCloud)
-	experimenttools.GenerateApps(numApp, appSuffix)
+	experimenttools.GenerateApps(numApp, appSuffix, 0.5)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
@@ -69,7 +69,7 @@ func main() {
 
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.3, 0.004, 200, algorithms.RandomFitSchedule, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {
