@@ -171,5 +171,6 @@ func genAppNumGroup() int {
 
 // generate the time interval between 2 app groups
 func genTimeIntervalGroups() float64 {
-	return random.ExponentialRandom(0, math.MaxFloat64, 1.0/15.0)
+	// lowerBound cannot be 0, because if two groups are at the same time, the line charts cannot be generated according to the time
+	return random.ExponentialRandom(1, math.MaxFloat64, 1.0/15.0)
 }

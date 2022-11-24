@@ -11,11 +11,9 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	"net/http"
 	"os"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -340,7 +338,12 @@ func GenerateNumTimeGroup(groupNum int) {
 
 	for i := 0; i < groupNum; i++ {
 		numTime.NumInGroup[i] = genAppNumGroup()
-		numTime.TimeIntervals[i] = time.Duration(genTimeIntervalGroups()) * time.Second
+		if i == 0 {
+			numTime.TimeIntervals[i] = 0 * time.Second
+		} else {
+			// The generation time of the first group should be 0, which is the start of the experiment;
+			numTime.TimeIntervals[i] = time.Duration(genTimeIntervalGroups()) * time.Second
+		}
 	}
 
 	numTimeJson, err := json.Marshal(numTime)
@@ -869,7 +872,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		// deploy this app in current clouds (subtract the resources)
 		currentClouds = algorithms.TrulyDeploy(clouds, appsToDeploy, solution)
 		for j := 0; j < len(currentClouds); j++ {
-			currentClouds[i].RefreshTime(appArrivalTimeIntervals[i])
+			currentClouds[j].RefreshTime(appArrivalTimeIntervals[i])
 		}
 
 		// add the solution of this app to current solution
@@ -986,523 +989,523 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		})
 	}
 
-	//// draw line charts
-	//var appNumbers []float64
-	//var ticks []chart.Tick
-	//appNumbers = append(appNumbers, float64(len(apps[0])))
-	//ticks = append(ticks, chart.Tick{
-	//	Value: appNumbers[0],
-	//	Label: fmt.Sprintf("%d", int(appNumbers[0])),
-	//})
-	//for i := 1; i < len(apps); i++ {
-	//	appNumbers = append(appNumbers, appNumbers[i-1]+float64(len(apps[i])))
-	//	ticks = append(ticks, chart.Tick{
-	//		Value: appNumbers[i],
-	//		Label: fmt.Sprintf("%d", int(appNumbers[i])),
-	//	})
+	////// draw line charts
+	////var appNumbers []float64
+	////var ticks []chart.Tick
+	////appNumbers = append(appNumbers, float64(len(apps[0])))
+	////ticks = append(ticks, chart.Tick{
+	////	Value: appNumbers[0],
+	////	Label: fmt.Sprintf("%d", int(appNumbers[0])),
+	////})
+	////for i := 1; i < len(apps); i++ {
+	////	appNumbers = append(appNumbers, appNumbers[i-1]+float64(len(apps[i])))
+	////	ticks = append(ticks, chart.Tick{
+	////		Value: appNumbers[i],
+	////		Label: fmt.Sprintf("%d", int(appNumbers[i])),
+	////	})
+	////}
+	//
+	//var CPUChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//	graph := chart.Chart{
+	//		Title: "CPUClock Idle Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "CPUClock Idle Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.CPUIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.CPUIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.CPUIdleRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
 	//}
-
-	var CPUChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		graph := chart.Chart{
-			Title: "CPUClock Idle Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "CPUClock Idle Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.CPUIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.CPUIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.CPUIdleRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var memoryChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		graph := chart.Chart{
-			Title: "Memory Idle Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Memory Idle Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.MemoryIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.MemoryIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.MemoryIdleRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var storageChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		graph := chart.Chart{
-			Title: "Storage Idle Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Storage Idle Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.StorageIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.StorageIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.StorageIdleRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var bwChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		graph := chart.Chart{
-			Title: "Bandwidth Idle Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Bandwidth Idle Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.BwIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.BwIdleRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.BwIdleRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var priorityChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-
-		graph := chart.Chart{
-			Title: "Application Acceptance Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Application Acceptance Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.AcceptedPriorityRateRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.AcceptedPriorityRateRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.AcceptedPriorityRateRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var svcPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-
-		graph := chart.Chart{
-			Title: "Service Acceptance Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Service Acceptance Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.AcceptedSvcPriRateRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.AcceptedSvcPriRateRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.AcceptedSvcPriRateRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var taskPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-
-		graph := chart.Chart{
-			Title: "Task Acceptance Rate",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Task Acceptance Rate",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.AcceptedTaskPriRateRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.AcceptedTaskPriRateRecords,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.AcceptedTaskPriRateRecords,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var complTimeChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		graph := chart.Chart{
-			Title: "Completion Time",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				ValueFormatter: func(v interface{}) string {
-					return strconv.FormatInt(int64(v.(float64)), 10)
-				},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Completion Time (s)",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.AllAppComplTime,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.AllAppComplTime,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.AllAppComplTime,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	var complTimePerPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
-		graph := chart.Chart{
-			Title: "Completion Time Per Priority",
-			XAxis: chart.XAxis{
-				Name:      "Time, Number of New Applications",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-				//ValueFormatter: func(v interface{}) string {
-				//	return strconv.FormatInt(int64(v.(float64)), 10)
-				//},
-				Ticks: ticks,
-			},
-			YAxis: chart.YAxis{
-				AxisType:  chart.YAxisSecondary,
-				Name:      "Completion Time Per Priority (s)",
-				NameStyle: chart.StyleShow(),
-				Style:     chart.StyleShow(),
-			},
-			Background: chart.Style{
-				Padding: chart.Box{
-					Top:  50,
-					Left: 20,
-				},
-			},
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					Name:    firstFitRecorder.Name,
-					XValues: xValues,
-					YValues: firstFitRecorder.AllAppComplTimePerPri,
-				},
-				chart.ContinuousSeries{
-					Name:    randomFitRecorder.Name,
-					XValues: xValues,
-					YValues: randomFitRecorder.AllAppComplTimePerPri,
-				},
-				chart.ContinuousSeries{
-					Name:    MCASGARecorder.Name,
-					XValues: xValues,
-					YValues: MCASGARecorder.AllAppComplTimePerPri,
-				},
-			},
-		}
-
-		graph.Elements = []chart.Renderable{
-			chart.LegendThin(&graph),
-		}
-
-		res.Header().Set("Content-Type", "image/png")
-		err := graph.Render(chart.PNG, res)
-		if err != nil {
-			log.Println("Error: graph.Render(chart.PNG, res)", err)
-		}
-	}
-
-	http.HandleFunc("/CPUIdleRate", CPUChartFunc)
-	http.HandleFunc("/memoryIdleRate", memoryChartFunc)
-	http.HandleFunc("/storageIdleRate", storageChartFunc)
-	http.HandleFunc("/bwIdleRate", bwChartFunc)
-	http.HandleFunc("/acceptedPriority", priorityChartFunc)
-	http.HandleFunc("/acceptedSvcPri", svcPriChartFunc)
-	http.HandleFunc("/acceptedTaskPri", taskPriChartFunc)
-	http.HandleFunc("/complTime", complTimeChartFunc)
-	http.HandleFunc("/complTimePerPri", complTimePerPriChartFunc)
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Println("Error: http.ListenAndServe(\":8080\", nil)", err)
-	}
+	//
+	//var memoryChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//	graph := chart.Chart{
+	//		Title: "Memory Idle Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Memory Idle Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.MemoryIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.MemoryIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.MemoryIdleRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var storageChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//	graph := chart.Chart{
+	//		Title: "Storage Idle Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Storage Idle Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.StorageIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.StorageIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.StorageIdleRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var bwChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//	graph := chart.Chart{
+	//		Title: "Bandwidth Idle Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Bandwidth Idle Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.BwIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.BwIdleRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.BwIdleRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var priorityChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//
+	//	graph := chart.Chart{
+	//		Title: "Application Acceptance Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Application Acceptance Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.AcceptedPriorityRateRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.AcceptedPriorityRateRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.AcceptedPriorityRateRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var svcPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//
+	//	graph := chart.Chart{
+	//		Title: "Service Acceptance Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Service Acceptance Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.AcceptedSvcPriRateRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.AcceptedSvcPriRateRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.AcceptedSvcPriRateRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var taskPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//
+	//	graph := chart.Chart{
+	//		Title: "Task Acceptance Rate",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Task Acceptance Rate",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.AcceptedTaskPriRateRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.AcceptedTaskPriRateRecords,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.AcceptedTaskPriRateRecords,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var complTimeChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//	graph := chart.Chart{
+	//		Title: "Completion Time",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			ValueFormatter: func(v interface{}) string {
+	//				return strconv.FormatInt(int64(v.(float64)), 10)
+	//			},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Completion Time (s)",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.AllAppComplTime,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.AllAppComplTime,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.AllAppComplTime,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//var complTimePerPriChartFunc func(http.ResponseWriter, *http.Request) = func(res http.ResponseWriter, r *http.Request) {
+	//	graph := chart.Chart{
+	//		Title: "Completion Time Per Priority",
+	//		XAxis: chart.XAxis{
+	//			Name:      "Time, Number of New Applications",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//			//ValueFormatter: func(v interface{}) string {
+	//			//	return strconv.FormatInt(int64(v.(float64)), 10)
+	//			//},
+	//			Ticks: ticks,
+	//		},
+	//		YAxis: chart.YAxis{
+	//			AxisType:  chart.YAxisSecondary,
+	//			Name:      "Completion Time Per Priority (s)",
+	//			NameStyle: chart.StyleShow(),
+	//			Style:     chart.StyleShow(),
+	//		},
+	//		Background: chart.Style{
+	//			Padding: chart.Box{
+	//				Top:  50,
+	//				Left: 20,
+	//			},
+	//		},
+	//		Series: []chart.Series{
+	//			chart.ContinuousSeries{
+	//				Name:    firstFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: firstFitRecorder.AllAppComplTimePerPri,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    randomFitRecorder.Name,
+	//				XValues: xValues,
+	//				YValues: randomFitRecorder.AllAppComplTimePerPri,
+	//			},
+	//			chart.ContinuousSeries{
+	//				Name:    MCASGARecorder.Name,
+	//				XValues: xValues,
+	//				YValues: MCASGARecorder.AllAppComplTimePerPri,
+	//			},
+	//		},
+	//	}
+	//
+	//	graph.Elements = []chart.Renderable{
+	//		chart.LegendThin(&graph),
+	//	}
+	//
+	//	res.Header().Set("Content-Type", "image/png")
+	//	err := graph.Render(chart.PNG, res)
+	//	if err != nil {
+	//		log.Println("Error: graph.Render(chart.PNG, res)", err)
+	//	}
+	//}
+	//
+	//http.HandleFunc("/CPUIdleRate", CPUChartFunc)
+	//http.HandleFunc("/memoryIdleRate", memoryChartFunc)
+	//http.HandleFunc("/storageIdleRate", storageChartFunc)
+	//http.HandleFunc("/bwIdleRate", bwChartFunc)
+	//http.HandleFunc("/acceptedPriority", priorityChartFunc)
+	//http.HandleFunc("/acceptedSvcPri", svcPriChartFunc)
+	//http.HandleFunc("/acceptedTaskPri", taskPriChartFunc)
+	//http.HandleFunc("/complTime", complTimeChartFunc)
+	//http.HandleFunc("/complTimePerPri", complTimePerPriChartFunc)
+	//err := http.ListenAndServe(":8080", nil)
+	//if err != nil {
+	//	log.Println("Error: http.ListenAndServe(\":8080\", nil)", err)
+	//}
 
 }
