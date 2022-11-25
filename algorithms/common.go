@@ -69,6 +69,13 @@ func TrulyDeploy(clouds []model.Cloud, apps []model.Application, solution model.
 			for _, dependence := range thisApp.Depend {
 				dependCloudIdx := solution.SchedulingResult[dependence.AppIdx]
 				//log.Println(cloudIndex, dependCloudIdx)
+				dependentApp := appsCopy[dependence.AppIdx]
+
+				// apps do not need to communicate with dependent tasks, so in this condition, the dependence does not need network resources
+				if dependentApp.IsTask {
+					continue
+				}
+
 				deployedClouds[cloudIndex].Allocatable.NetCondClouds[dependCloudIdx].DownBw -= dependence.DownBw
 				deployedClouds[dependCloudIdx].Allocatable.NetCondClouds[cloudIndex].DownBw -= dependence.UpBw
 			}
@@ -116,12 +123,18 @@ func Acceptable(clouds []model.Cloud, apps []model.Application, schedulingResult
 			// network bandwidths and RTT
 			for _, dependence := range deployedApp.Depend {
 				dependentCloudIdx := schedulingResult[dependence.AppIdx]
+				dependentApp := apps[dependence.AppIdx]
 				if dependentCloudIdx == len(deployedClouds) {
 					return false // the dependent app is rejected
 				}
 
 				// cloudIndex: current cloud
 				// dependentCloudIdx: dependent cloud
+
+				// apps do not need to communicate with dependent tasks, so in this condition, the dependence does not need network resources
+				if dependentApp.IsTask {
+					continue
+				}
 
 				// check RTT requirements
 				if deployedClouds[cloudIndex].TmpAlloc.NetCondClouds[dependentCloudIdx].RTT > dependence.RTT {
@@ -173,6 +186,7 @@ func CalcRemainingApps(resClouds, timeClouds []model.Cloud, timeSinceLastDeploy 
 					remainingApp := model.AppCopy(thisApp)
 					remainingApp.StartTime = 0
 					remainingApp.ImagePullDoneTime = 0
+					remainingApp.DataInputDoneTime = 0
 					remainingApp.TaskCompletionTime = 0
 					remainingApp.IsNew = false
 					remainingApp.CloudRemainingOn = j
@@ -180,9 +194,9 @@ func CalcRemainingApps(resClouds, timeClouds []model.Cloud, timeSinceLastDeploy 
 					remainingApp.CanMigrate = true
 
 					// tasks being executed
-					if timeSinceLastDeploy > thisApp.ImagePullDoneTime {
+					if timeSinceLastDeploy > thisApp.DataInputDoneTime {
 						// calculate how many CPU cycles are not done
-						executedTime := timeSinceLastDeploy - thisApp.ImagePullDoneTime
+						executedTime := timeSinceLastDeploy - thisApp.DataInputDoneTime
 						executedCycles := executedTime * (timeCloudsCopy[j].TmpAlloc.CPU.LogicalCores * timeCloudsCopy[j].TmpAlloc.CPU.BaseClock)
 						remainingCycles := thisApp.TaskReq.CPUCycle - executedCycles
 
@@ -198,15 +212,19 @@ func CalcRemainingApps(resClouds, timeClouds []model.Cloud, timeSinceLastDeploy 
 				remainingApp := model.AppCopy(thisApp)
 				remainingApp.StartTime = 0
 				remainingApp.ImagePullDoneTime = 0
+				remainingApp.DataInputDoneTime = 0
 				remainingApp.TaskCompletionTime = 0
 				remainingApp.IsNew = false
 				remainingApp.CloudRemainingOn = j
 				remainingApp.ImagePullDone = false
 				remainingApp.CanMigrate = true
 
-				if timeSinceLastDeploy > thisApp.ImagePullDoneTime { // after image pull, start executing
-					timeCloudsCopy[j].TmpAlloc.CPU.LogicalCores -= thisApp.SvcReq.CPUClock / timeCloudsCopy[j].TmpAlloc.CPU.BaseClock
+				if timeSinceLastDeploy > thisApp.ImagePullDoneTime { // after image pulling
 					remainingApp.ImagePullDone = true
+				}
+
+				if timeSinceLastDeploy > thisApp.DataInputDoneTime { // after data input, start executing, occupy the resource
+					timeCloudsCopy[j].TmpAlloc.CPU.LogicalCores -= thisApp.SvcReq.CPUClock / timeCloudsCopy[j].TmpAlloc.CPU.BaseClock
 				}
 				remainingApps = append(remainingApps, remainingApp)
 			}

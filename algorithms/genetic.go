@@ -161,8 +161,8 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].TaskCompletionTime
 						}
 					} else { // should be after the start time of every dependent service
-						if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].StartTime > latestStartTime {
-							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].StartTime
+						if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].DataInputDoneTime > latestStartTime {
+							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].DataInputDoneTime
 						}
 					}
 				}
@@ -184,6 +184,10 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 				// set image pull done time
 				clouds[cloudIndex].RunningApps[i].ImagePullDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime
 				unorderedApps[apps[k].AppIdx].ImagePullDoneTime = unorderedApps[apps[k].AppIdx].StartTime + imagePullTime
+
+				// set data input done time
+				clouds[cloudIndex].RunningApps[i].DataInputDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime + dataInputTime
+				unorderedApps[apps[k].AppIdx].DataInputDoneTime = unorderedApps[apps[k].AppIdx].StartTime + imagePullTime + dataInputTime
 
 				if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
 					// task execution time
@@ -245,9 +249,9 @@ func (g *Genetic) fitnessOneApp(clouds []model.Cloud, app model.Application, cho
 		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
 			// find this app in RunningApps of this cloud
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
-				thisSvcStartTime := clouds[chosenCloudIndex].RunningApps[i].StartTime
+				thisSvcInputDoneTime := clouds[chosenCloudIndex].RunningApps[i].DataInputDoneTime
 				//Maximize (X - tb) *priority (if tb > X, we set tb = X)
-				thisFitness := (g.RejectExecTime - thisSvcStartTime) * float64(app.Priority)
+				thisFitness := (g.RejectExecTime - thisSvcInputDoneTime) * float64(app.Priority)
 				if thisFitness < 0 {
 					thisFitness = 0
 				}
@@ -717,6 +721,9 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 		}
 		if apps[i].ImagePullDoneTime != 0 {
 			log.Panicf("apps[%d].ImagePullDoneTime is %g", i, apps[i].ImagePullDoneTime)
+		}
+		if apps[i].DataInputDoneTime != 0 {
+			log.Panicf("apps[%d].DataInputDoneTime is %g", i, apps[i].DataInputDoneTime)
 		}
 		if apps[i].TaskCompletionTime != 0 {
 			log.Panicf("apps[%d].TaskCompletionTime is %g", i, apps[i].TaskCompletionTime)

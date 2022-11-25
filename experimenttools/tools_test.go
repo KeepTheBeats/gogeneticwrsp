@@ -2,6 +2,7 @@ package experimenttools
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -98,10 +99,45 @@ func TestInnerGenerateResourceBW(t *testing.T) {
 //}
 
 func TestInnerGeneratePriority(t *testing.T) {
+	fmt.Println("Generate 40 uniform Priority values of application:")
+	var priorities []float64
+	for i := 0; i < 10000; i++ {
+		p := generateUniformPriority(10, 65535)
+		priorities = append(priorities, float64(p))
+		//fmt.Println(generateUniformPriority(10, 65535))
+	}
+	fmt.Println("mean:", mean(priorities))
+	fmt.Println("std:", std(priorities))
 	fmt.Println("Generate 40 Priority values of application:")
 	for i := 0; i < 40; i++ {
-		fmt.Println(generatePriority(100, 65535.9, 150, 300))
+		fmt.Println(generatePriority(10, 65535, 32963.604, 18811.737890349978))
 	}
+	fmt.Println("Generate 40 power Priority values of application:")
+	for i := 0; i < 40; i++ {
+		fmt.Println(generatePowerPriority(0, 16))
+	}
+}
+
+func mean(a []float64) float64 {
+	var sum float64 = 0
+	for i := 0; i < len(a); i++ {
+		sum += a[i]
+	}
+	return sum / float64(len(a))
+}
+
+func variance(v []float64) float64 {
+	var res float64 = 0
+	var m = mean(v)
+	var n int = len(v)
+	for i := 0; i < n; i++ {
+		res += (v[i] - m) * (v[i] - m)
+	}
+	return res / float64(n-1)
+}
+
+func std(v []float64) float64 {
+	return math.Sqrt(variance(v))
 }
 
 func TestInnerGenAppNumGroup(t *testing.T) {

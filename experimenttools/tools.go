@@ -159,9 +159,24 @@ func generateImageSize() float64 {
 	return imageSize
 }
 
-// Priority of application range [100, 65535]
+// Priority of application range [1, 65535]
 func generatePriority(lowerBound, upperBound, miu, sigma float64) uint16 {
 	return uint16(random.NormalRandomBM(lowerBound, upperBound, miu, sigma))
+}
+
+// Priority of application range [1, 65535]
+func generateUniformPriority(lowerBound, upperBound float64) uint16 {
+	return uint16(random.RandomInt(int(lowerBound), int(upperBound)))
+}
+
+// Priority of application range [1, 65535]
+func generatePowerPriority(lowerBoundPower, upperBoundPower float64) uint16 {
+	power := random.RandomInt(int(lowerBoundPower), int(upperBoundPower))
+	priority := math.Pow(2, float64(power))
+	if priority > 65535 {
+		priority = 65535
+	}
+	return uint16(priority)
 }
 
 // generate the number of applications in an app group

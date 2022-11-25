@@ -11,13 +11,14 @@ type Application struct {
 	IsTask   bool             `json:"isTask"`
 	SvcReq   ServiceResources `json:"svcReq"`
 	TaskReq  TaskResources    `json:"taskReq"`
-	Priority uint16           `json:"priority"` // range [100, 65535], if the range is [1, 65535], the 2 will be much more prior to 1, because 2 is 2 times 1
+	Priority uint16           `json:"priority"` // range [1, 65535], 2 will be much more prior to 1, because 2 is twice of 1, users should consider this when setting the priorities. Users should know how big the difference between two applications.
 	AppIdx   int              `json:"appIdx"`   // index in the apps to be scheduled
 	OriIdx   int              `json:"oriIdx"`   // original index in all apps
 
 	// used in one round of scheduling
 	StartTime          float64 `json:"startTime"`          // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment of this application's start", unit second
 	ImagePullDoneTime  float64 `json:"imagePullDoneTime"`  // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment of this application's image pulling being done", unit second
+	DataInputDoneTime  float64 `json:"dataInputDoneTime"`  // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment of this application's data input being done", unit second
 	TaskCompletionTime float64 `json:"taskCompletionTime"` // only task has this, time duration from "the moment that all apps start to be deployed" to "the moment of this task's completion", unit second
 
 	// used in all rounds of scheduling

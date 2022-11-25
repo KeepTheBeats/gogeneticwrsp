@@ -171,7 +171,8 @@ func GenerateApps(numApp int, suffix string, taskProportion float64) {
 			//}
 		}
 
-		apps[i].Priority = generatePriority(100, 65535.9, 150, 300)
+		//apps[i].Priority = generatePriority(100, 10000, 5000, 5000)
+		apps[i].Priority = generateUniformPriority(1, 65535)
 		apps[i].InputDataSize = generateInputSize()
 		apps[i].ImageSize = generateImageSize()
 		apps[i].AppIdx = i
@@ -619,7 +620,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 			if timeApps[j].IsTask { // set final completion time for tasks
 				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
 			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].DataInputDoneTime
 			}
 		}
 
@@ -715,7 +716,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 			if timeApps[j].IsTask { // set final completion time for tasks
 				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
 			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].DataInputDoneTime
 			}
 		}
 
@@ -849,7 +850,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 			if timeApps[j].IsTask { // set final completion time for tasks
 				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
 			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
+				//totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].DataInputDoneTime
 			}
 		}
 
@@ -866,8 +868,6 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		MCASGARecorder.AllAppComplTime = append(MCASGARecorder.AllAppComplTime, longestTime)
 		log.Println("thisTimeRecord", thisTimeRecord)
 		log.Println("MCASGARecorder.AllAppComplTime", MCASGARecorder.AllAppComplTime)
-
-		lastSolution = model.SolutionCopy(solution)
 
 		// deploy this app in current clouds (subtract the resources)
 		currentClouds = algorithms.TrulyDeploy(clouds, appsToDeploy, solution)
