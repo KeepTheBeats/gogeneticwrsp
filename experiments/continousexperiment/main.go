@@ -35,8 +35,8 @@ func main() {
 	}
 	log.Println("taskProportion", taskProportion)
 
-	var numCloud int = 10
-	var groupNum int = 15
+	var numCloud int = 9
+	var groupNum int = 9
 	experimenttools.GenerateNumTimeGroup(groupNum)
 
 	var numTime experimenttools.NumTimeGroup = experimenttools.ReadNumTimeGroup(groupNum)

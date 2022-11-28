@@ -161,8 +161,8 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].TaskCompletionTime
 						}
 					} else { // should be after the start time of every dependent service
-						if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].DataInputDoneTime > latestStartTime {
-							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].DataInputDoneTime
+						if unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].StableTime > latestStartTime {
+							latestStartTime = unorderedApps[clouds[cloudIndex].RunningApps[i].Depend[j].AppIdx].StableTime
 						}
 					}
 				}
@@ -181,6 +181,15 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 				// calculate time of transmitting data from Architecture Controller to this cloud, 1 Byte = 8 bits
 				dataInputTime := (clouds[cloudIndex].RunningApps[i].InputDataSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondController.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondController.RTT / 1000) // unit: second
 
+				// calculate the startup time of this application
+				startUpTime := clouds[cloudIndex].RunningApps[i].StartUpCPUCycle / (clouds[cloudIndex].TmpAlloc.CPU.LogicalCores * clouds[cloudIndex].TmpAlloc.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
+
+				// For an old app already stable on the old cloud, we can simply pause/unpause it through cgroup freezer, no need to input data or start up
+				if !clouds[cloudIndex].RunningApps[i].IsNew && clouds[cloudIndex].RunningApps[i].AlreadyStable && cloudIndex == clouds[cloudIndex].RunningApps[i].CloudRemainingOn {
+					dataInputTime = 0
+					startUpTime = 0
+				}
+
 				// set image pull done time
 				clouds[cloudIndex].RunningApps[i].ImagePullDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime
 				unorderedApps[apps[k].AppIdx].ImagePullDoneTime = unorderedApps[apps[k].AppIdx].StartTime + imagePullTime
@@ -189,11 +198,15 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 				clouds[cloudIndex].RunningApps[i].DataInputDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime + dataInputTime
 				unorderedApps[apps[k].AppIdx].DataInputDoneTime = unorderedApps[apps[k].AppIdx].StartTime + imagePullTime + dataInputTime
 
+				// set stable time
+				clouds[cloudIndex].RunningApps[i].StableTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime + dataInputTime + startUpTime
+				unorderedApps[apps[k].AppIdx].StableTime = unorderedApps[apps[k].AppIdx].StartTime + imagePullTime + dataInputTime + startUpTime
+
 				if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
 					// task execution time
 					execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (clouds[cloudIndex].TmpAlloc.CPU.LogicalCores * clouds[cloudIndex].TmpAlloc.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
 					// a task should consume the three parts of time
-					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + execTime
+					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + startUpTime + execTime
 					clouds[cloudIndex].RunningApps[i].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
 					unorderedApps[apps[k].AppIdx].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
 				} else { // Services take up the resource
@@ -201,7 +214,7 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 					clouds[cloudIndex].TmpAlloc.CPU.LogicalCores -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].TmpAlloc.CPU.BaseClock
 
 					// a service should consume the two parts of time
-					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime
+					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + startUpTime
 				}
 
 				break
@@ -249,9 +262,9 @@ func (g *Genetic) fitnessOneApp(clouds []model.Cloud, app model.Application, cho
 		for i := 0; i < len(clouds[chosenCloudIndex].RunningApps); i++ {
 			// find this app in RunningApps of this cloud
 			if clouds[chosenCloudIndex].RunningApps[i].AppIdx == app.AppIdx {
-				thisSvcInputDoneTime := clouds[chosenCloudIndex].RunningApps[i].DataInputDoneTime
+				thisSvcStableTime := clouds[chosenCloudIndex].RunningApps[i].StableTime
 				//Maximize (X - tb) *priority (if tb > X, we set tb = X)
-				thisFitness := (g.RejectExecTime - thisSvcInputDoneTime) * float64(app.Priority)
+				thisFitness := (g.RejectExecTime - thisSvcStableTime) * float64(app.Priority)
 				if thisFitness < 0 {
 					thisFitness = 0
 				}
@@ -724,6 +737,9 @@ func (g *Genetic) Schedule(clouds []model.Cloud, apps []model.Application) (mode
 		}
 		if apps[i].DataInputDoneTime != 0 {
 			log.Panicf("apps[%d].DataInputDoneTime is %g", i, apps[i].DataInputDoneTime)
+		}
+		if apps[i].StableTime != 0 {
+			log.Panicf("apps[%d].StableTime is %g", i, apps[i].StableTime)
 		}
 		if apps[i].TaskCompletionTime != 0 {
 			log.Panicf("apps[%d].TaskCompletionTime is %g", i, apps[i].TaskCompletionTime)

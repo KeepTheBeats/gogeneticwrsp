@@ -39,7 +39,7 @@ type ServiceResources struct {
 }
 
 type TaskResources struct {
-	CPUCycle float64 `json:"cpuCycle"` // unit number of CPU cycles needed to execute the task
+	CPUCycle float64 `json:"cpuCycle"` // number of CPU cycles needed to execute the task
 	Memory   float64 `json:"memory"`   // unit Byte (B)
 	Storage  float64 `json:"storage"`  // unit Byte (B)
 }

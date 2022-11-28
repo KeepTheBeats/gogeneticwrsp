@@ -187,21 +187,27 @@ func CalcRemainingApps(resClouds, timeClouds []model.Cloud, timeSinceLastDeploy 
 					remainingApp.StartTime = 0
 					remainingApp.ImagePullDoneTime = 0
 					remainingApp.DataInputDoneTime = 0
+					remainingApp.StableTime = 0
 					remainingApp.TaskCompletionTime = 0
 					remainingApp.IsNew = false
 					remainingApp.CloudRemainingOn = j
 					remainingApp.ImagePullDone = false
+					remainingApp.AlreadyStable = false
 					remainingApp.CanMigrate = true
 
+					if timeSinceLastDeploy > thisApp.ImagePullDoneTime { // after image pulling
+						remainingApp.ImagePullDone = true
+					}
+
 					// tasks being executed
-					if timeSinceLastDeploy > thisApp.DataInputDoneTime {
+					if timeSinceLastDeploy > thisApp.StableTime {
 						// calculate how many CPU cycles are not done
-						executedTime := timeSinceLastDeploy - thisApp.DataInputDoneTime
+						executedTime := timeSinceLastDeploy - thisApp.StableTime
 						executedCycles := executedTime * (timeCloudsCopy[j].TmpAlloc.CPU.LogicalCores * timeCloudsCopy[j].TmpAlloc.CPU.BaseClock)
 						remainingCycles := thisApp.TaskReq.CPUCycle - executedCycles
 
-						remainingApp.ImagePullDone = true
-						remainingApp.CanMigrate = false // cannot be migrated after starting executing
+						remainingApp.AlreadyStable = true // after starting executing, it was already stable
+						remainingApp.CanMigrate = false   // cannot be migrated after starting executing
 						remainingApp.TaskReq.CPUCycle = remainingCycles
 
 					}
@@ -213,17 +219,20 @@ func CalcRemainingApps(resClouds, timeClouds []model.Cloud, timeSinceLastDeploy 
 				remainingApp.StartTime = 0
 				remainingApp.ImagePullDoneTime = 0
 				remainingApp.DataInputDoneTime = 0
+				remainingApp.StableTime = 0
 				remainingApp.TaskCompletionTime = 0
 				remainingApp.IsNew = false
 				remainingApp.CloudRemainingOn = j
 				remainingApp.ImagePullDone = false
+				remainingApp.AlreadyStable = false
 				remainingApp.CanMigrate = true
 
 				if timeSinceLastDeploy > thisApp.ImagePullDoneTime { // after image pulling
 					remainingApp.ImagePullDone = true
 				}
 
-				if timeSinceLastDeploy > thisApp.DataInputDoneTime { // after data input, start executing, occupy the resource
+				if timeSinceLastDeploy > thisApp.StableTime { // after startup, start executing, occupy the resource
+					remainingApp.AlreadyStable = true
 					timeCloudsCopy[j].TmpAlloc.CPU.LogicalCores -= thisApp.SvcReq.CPUClock / timeCloudsCopy[j].TmpAlloc.CPU.BaseClock
 				}
 				remainingApps = append(remainingApps, remainingApp)

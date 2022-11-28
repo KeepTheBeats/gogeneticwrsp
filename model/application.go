@@ -8,17 +8,23 @@ import (
 // Services run forever.
 // A task needs to do some workload and will release resources after the completion of the work.
 type Application struct {
-	IsTask   bool             `json:"isTask"`
-	SvcReq   ServiceResources `json:"svcReq"`
-	TaskReq  TaskResources    `json:"taskReq"`
-	Priority uint16           `json:"priority"` // range [1, 65535], 2 will be much more prior to 1, because 2 is twice of 1, users should consider this when setting the priorities. Users should know how big the difference between two applications.
-	AppIdx   int              `json:"appIdx"`   // index in the apps to be scheduled
-	OriIdx   int              `json:"oriIdx"`   // original index in all apps
+	IsTask  bool             `json:"isTask"`
+	SvcReq  ServiceResources `json:"svcReq"`
+	TaskReq TaskResources    `json:"taskReq"`
+
+	InputDataSize   float64 `json:"inputDataSize"`   // unit Byte (B)
+	ImageSize       float64 `json:"imageSize"`       // container image size, unit Byte (B)
+	StartUpCPUCycle float64 `json:"startUpCPUCycle"` // number of CPU cycles needed during the application startup
+
+	Priority uint16 `json:"priority"` // range [1, 65535], 2 will be much more prior to 1, because 2 is twice of 1, users should consider this when setting the priorities. Users should know how big the difference between two applications.
+	AppIdx   int    `json:"appIdx"`   // index in the apps to be scheduled
+	OriIdx   int    `json:"oriIdx"`   // original index in all apps
 
 	// used in one round of scheduling
 	StartTime          float64 `json:"startTime"`          // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment of this application's start", unit second
 	ImagePullDoneTime  float64 `json:"imagePullDoneTime"`  // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment of this application's image pulling being done", unit second
 	DataInputDoneTime  float64 `json:"dataInputDoneTime"`  // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment of this application's data input being done", unit second
+	StableTime         float64 `json:"stableTime"`         // service and task have this, time duration from "the moment that all apps start to be deployed" to "the moment when the application is stable, meaning application startup being done", unit second
 	TaskCompletionTime float64 `json:"taskCompletionTime"` // only task has this, time duration from "the moment that all apps start to be deployed" to "the moment of this task's completion", unit second
 
 	// used in all rounds of scheduling
@@ -28,14 +34,12 @@ type Application struct {
 
 	Depend []Dependence `json:"depend"` // the dependence information of this application
 
-	InputDataSize float64 `json:"inputDataSize"` // unit Byte (B)
-	ImageSize     float64 `json:"imageSize"`     // container image size, unit Byte (B)
-
 	// for remaining apps
 	IsNew bool `json:"isNew"` // whether this application is newly coming in this round. true: newly coming in this round; false: remaining from previous rounds
 	// this group of parameters are effective only when IsNew == false
 	CloudRemainingOn int  `json:"cloudRemainingOn"` // which cloud that this app was scheduled to in previous rounds
 	ImagePullDone    bool `json:"imagePullDone"`    // whether the image was pulled down in previous rounds
+	AlreadyStable    bool `json:"alreadyStable"`    // whether the app already finished startup in previous rounds
 	CanMigrate       bool `json:"canMigrate"`       // whether the app can be migrated or can only be suspended
 }
 

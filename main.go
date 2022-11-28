@@ -15,7 +15,7 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 9, 40
+	var numCloud, numApp int = 10, 70
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files

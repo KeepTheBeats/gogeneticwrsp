@@ -36,6 +36,15 @@ func generateSvcCPU() float64 {
 	return CPUClock
 }
 
+// generate the required CPU cycles during an application's startup
+func generateStartUpCPU() float64 {
+	var CPUCycle float64
+	lowerBound, upperBound, miu, sigma := 2888508672.0, 4645436627.0, 3732231137.0, 880522502.9
+	// from parameters in several related works
+	CPUCycle = random.NormalRandomBM(lowerBound, upperBound, miu, sigma)
+	return CPUCycle
+}
+
 // CPUClock logical cores,
 func generateResourceCPU(lowerBound, upperBound, miu, sigma float64, forCapacity bool) float64 {
 	raw_cores := random.NormalRandomBM(lowerBound, upperBound, miu, sigma)

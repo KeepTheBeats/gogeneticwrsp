@@ -57,19 +57,10 @@ func GenerateClouds(numCloud int) {
 	var clouds []model.Cloud = make([]model.Cloud, numCloud)
 
 	// generate clouds
-	//cloudDiffTimes := 2.0 // give clouds different types
 	for i := 0; i < numCloud; i++ {
 		clouds[i].Capacity.CPU = chooseResCPU()
 		clouds[i].Capacity.Memory = chooseResMem()
 		clouds[i].Capacity.Storage = chooseResStor()
-
-		//// give clouds different types
-		//if i > numCloud/4 && i <= numCloud/2 {
-		//	clouds[i].Capacity.Memory /= cloudDiffTimes
-		//}
-		//if i > numCloud/2 && i <= int(float64(numCloud)*0.75) {
-		//	clouds[i].Capacity.Storage /= cloudDiffTimes
-		//}
 
 		// network conditions
 		clouds[i].Capacity.NetCondClouds = make([]model.NetworkCondition, numCloud)
@@ -118,14 +109,12 @@ func GenerateApps(numApp int, suffix string, taskProportion float64) {
 	var apps []model.Application = make([]model.Application, numApp)
 
 	// generate applications
-	//var taskProportion float64 = random.RandomFloat64(0.1, 0.9)
 	var taskNum int = int(float64(numApp) * taskProportion)
 	var svcNum int = numApp - taskNum
 	log.Println("taskProportion", taskProportion)
 	log.Println("taskNum", taskNum)
 	log.Println("svcNum", svcNum)
 
-	//appDiffTimes := 2.0 // give clouds different types
 	var currentTaskNum, currentSvcNum int = 0, 0
 	for i := 0; i < numApp; i++ {
 		var isTask bool
@@ -146,35 +135,19 @@ func GenerateApps(numApp int, suffix string, taskProportion float64) {
 
 			apps[i].TaskReq.Memory = chooseReqMem()
 			apps[i].TaskReq.Storage = chooseReqStor()
-
-			//// give applications different types
-			//if i > numApp/4 && i <= numApp/2 {
-			//	apps[i].TaskReq.Memory *= appDiffTimes
-			//}
-			//if i > numApp/2 && i <= int(float64(numApp)*0.75) {
-			//	apps[i].TaskReq.Storage *= appDiffTimes
-			//}
-
 		} else {
 			currentSvcNum++
 			apps[i].IsTask = false
 			apps[i].SvcReq.CPUClock = generateSvcCPU()
 			apps[i].SvcReq.Memory = chooseReqMem()
 			apps[i].SvcReq.Storage = chooseReqStor()
-
-			//// give applications different types
-			//if i > numApp/4 && i <= numApp/2 {
-			//	apps[i].SvcReq.Memory *= appDiffTimes
-			//}
-			//if i > numApp/2 && i <= int(float64(numApp)*0.75) {
-			//	apps[i].SvcReq.Storage *= appDiffTimes
-			//}
 		}
 
 		//apps[i].Priority = generatePriority(100, 10000, 5000, 5000)
 		apps[i].Priority = generateUniformPriority(1, 65535)
 		apps[i].InputDataSize = generateInputSize()
 		apps[i].ImageSize = generateImageSize()
+		apps[i].StartUpCPUCycle = generateStartUpCPU()
 		apps[i].AppIdx = i
 		apps[i].IsNew = true
 		apps[i].SvcSuspensionTime = 0
@@ -620,7 +593,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 			if timeApps[j].IsTask { // set final completion time for tasks
 				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
 			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].DataInputDoneTime
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
 			}
 		}
 
@@ -716,7 +689,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 			if timeApps[j].IsTask { // set final completion time for tasks
 				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
 			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].DataInputDoneTime
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
 			}
 		}
 
@@ -851,7 +824,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
 			} else { // set suspension time for services
 				//totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].DataInputDoneTime
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
 			}
 		}
 
