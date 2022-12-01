@@ -69,7 +69,7 @@ func main() {
 
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.3, 0.004, 200, algorithms.RandomFitSchedule, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {

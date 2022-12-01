@@ -44,12 +44,13 @@ type Genetic struct {
 
 	SelectableCloudsForApps [][]int
 
-	InitFunc func([]model.Cloud, []model.Application) []int // the function to initialize populations
+	InitFunc      func([]model.Cloud, []model.Application) []int        // the function to initialize populations
+	CrossoverFunc func(Chromosome, Chromosome) (Chromosome, Chromosome) // crossover operator
 
 	RejectExecTime float64 // We set this time as the start time of rejected services and completion time of rejected tasks unit second
 }
 
-func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability float64, mutationProbability float64, stopNoUpdateIteration int, initFunc func([]model.Cloud, []model.Application) []int, clouds []model.Cloud, apps []model.Application) *Genetic {
+func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability float64, mutationProbability float64, stopNoUpdateIteration int, initFunc func([]model.Cloud, []model.Application) []int, crossoverFunc func(Chromosome, Chromosome) (Chromosome, Chromosome), clouds []model.Cloud, apps []model.Application) *Genetic {
 	if err := model.DependencyValid(apps); err != nil {
 		log.Panicf("model.DependencyValid(apps), err: %s", err.Error())
 	}
@@ -104,6 +105,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 		BestAcceptableUntilNowUpdateIterations: []float64{-1},
 		SelectableCloudsForApps:                selectableCloudsForApps,
 		InitFunc:                               initFunc,
+		CrossoverFunc:                          crossoverFunc,
 	}
 }
 
@@ -567,27 +569,7 @@ func (g *Genetic) crossoverOperator(clouds []model.Cloud, apps []model.Applicati
 		firstChromosome := copyPopulation[firstIndex]
 		secondChromosome := copyPopulation[secondIndex]
 
-		// randomly choose a gene after which the genes are exchanged
-		startPosition := random.RandomInt(1, len(apps)-1) // in each chromosome, there are len(apps) genes
-
-		//log.Println("firstIndex:", firstIndex, "secondIndex:", secondIndex, "startPosition:", startPosition)
-
-		// cut the firstChromosome and secondChromosome at the startPosition
-		firstHead := make([]int, len(firstChromosome[:startPosition]))
-		copy(firstHead, firstChromosome[:startPosition])
-
-		firstTail := make([]int, len(firstChromosome[startPosition:]))
-		copy(firstTail, firstChromosome[startPosition:])
-
-		secondHead := make([]int, len(secondChromosome[:startPosition]))
-		copy(secondHead, secondChromosome[:startPosition])
-
-		secondTail := make([]int, len(secondChromosome[startPosition:]))
-		copy(secondTail, secondChromosome[startPosition:])
-
-		// generate new chromosomes
-		newFirstChromosome := append(firstHead, secondTail...)
-		newSecondChromosome := append(secondHead, firstTail...)
+		newFirstChromosome, newSecondChromosome := g.CrossoverFunc(firstChromosome, secondChromosome)
 
 		// append the two new chromosomes in newPopulation
 		newPopulation = append(newPopulation, newFirstChromosome, newSecondChromosome)

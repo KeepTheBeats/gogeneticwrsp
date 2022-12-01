@@ -1,6 +1,7 @@
 package algorithms
 
 import (
+	"github.com/KeepTheBeats/routing-algorithms/random"
 	"gogeneticwrsp/model"
 	"log"
 	"sort"
@@ -274,6 +275,62 @@ func CalcRemainingApps(resClouds, timeClouds []model.Cloud, timeSinceLastDeploy 
 	}
 
 	return remainingApps
+}
+
+// OnePointCrossOver one point crossover operator
+func OnePointCrossOver(firstChromosome, secondChromosome Chromosome) (Chromosome, Chromosome) {
+	// randomly choose a gene after which the genes are exchanged
+	startPosition := random.RandomInt(1, len(firstChromosome)-1) // in each chromosome, there are len(apps) genes
+
+	//log.Println("firstIndex:", firstIndex, "secondIndex:", secondIndex, "startPosition:", startPosition)
+
+	// cut the firstChromosome and secondChromosome at the startPosition
+	firstHead := make([]int, len(firstChromosome[:startPosition]))
+	copy(firstHead, firstChromosome[:startPosition])
+
+	firstTail := make([]int, len(firstChromosome[startPosition:]))
+	copy(firstTail, firstChromosome[startPosition:])
+
+	secondHead := make([]int, len(secondChromosome[:startPosition]))
+	copy(secondHead, secondChromosome[:startPosition])
+
+	secondTail := make([]int, len(secondChromosome[startPosition:]))
+	copy(secondTail, secondChromosome[startPosition:])
+
+	// generate new chromosomes
+	newFirstChromosome := append(firstHead, secondTail...)
+	newSecondChromosome := append(secondHead, firstTail...)
+
+	return newFirstChromosome, newSecondChromosome
+}
+
+// TwoPointCrossOver two point crossover operator
+func TwoPointCrossOver(firstChromosome, secondChromosome Chromosome) (Chromosome, Chromosome) {
+	tmpForPick := make([]int, len(firstChromosome))
+	points := random.RandomPickN(tmpForPick, 2)
+	var point1, point2 int
+	if points[0] <= points[1] {
+		point1, point2 = points[0], points[1]
+	} else {
+		point1, point2 = points[1], points[0]
+	}
+
+	var firstNew Chromosome = make(Chromosome, len(firstChromosome))
+	var secondNew Chromosome = make(Chromosome, len(secondChromosome))
+	copy(firstNew, firstChromosome)
+	copy(secondNew, secondChromosome)
+
+	// cut mid
+	var firstMid []int = make([]int, point2-point1+1)
+	var secondMid []int = make([]int, point2-point1+1)
+	copy(firstMid, firstNew[point1:point2+1])
+	copy(secondMid, secondNew[point1:point2+1])
+
+	// switch
+	copy(firstNew[point1:point2+1], secondMid)
+	copy(secondNew[point1:point2+1], firstMid)
+
+	return firstNew, secondNew
 }
 
 // CloudMeetApp check whether a cloud can meet an application

@@ -370,8 +370,8 @@ type OneTimeHelper struct {
 
 // OneTimeExperiment is that all applications are deployed in one time and handled together
 func OneTimeExperiment(clouds []model.Cloud, apps []model.Application) {
-	gaRandomInit := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, clouds, apps)
-	gaUndeployedInit := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
+	gaRandomInit := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, apps)
+	gaUndeployedInit := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeUndeployedChromosome, algorithms.OnePointCrossOver, clouds, apps)
 	//gaRandomInit := algorithms.NewGenetic(1000, 5000, 0.7, 0.007, 5000, algorithms.RandomFitSchedule, clouds, apps)
 	//gaUndeployedInit := algorithms.NewGenetic(1000, 5000, 0.7, 0.007, 5000, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	ff := algorithms.NewFirstFit(clouds, apps)
@@ -801,7 +801,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		lastApps = model.AppsCopy(appsToDeploy)
 
 		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, totalApps)
-		ga := algorithms.NewGenetic(200, 5000, 0.3, 0.004, 200, algorithms.RandomFitSchedule, clouds, appsToDeploy)
+		ga := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, appsToDeploy)
 		solution, err := ga.Schedule(clouds, appsToDeploy)
 		if err != nil {
 			log.Printf("Error, app %d. Error message: %s", i, err.Error())
