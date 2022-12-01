@@ -318,6 +318,13 @@ func (n *NSGAII) fitnessOneApp(clouds []model.Cloud, apps []model.Application, a
 		depIdx := apps[appIdx].Depend[i].AppIdx
 		latencyOverhead += clouds[chromosome[appIdx]].Allocatable.NetCondClouds[chromosome[depIdx]].RTT
 	}
+	// reject ones should have the biggest fitness
+	if repairTime > n.RejectRepairTime {
+		repairTime = n.RejectRepairTime
+	}
+	if latencyOverhead > n.RejectLatencyOverhead {
+		latencyOverhead = n.RejectLatencyOverhead
+	}
 	return repairTime, latencyOverhead
 }
 

@@ -113,7 +113,7 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 func (g *Genetic) Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) float64 {
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
 	var appsCopy []model.Application = model.AppsCopy(apps)
-	CalcStartComplTime(deployedClouds, appsCopy, chromosome)
+	appsCopy = CalcStartComplTime(deployedClouds, appsCopy, chromosome)
 	//for i := 0; i < len(deployedClouds); i++ {
 	//	sort.Sort(model.AppSlice(deployedClouds[i].RunningApps))
 	//	fmt.Println("Cloud:", i)
@@ -124,10 +124,9 @@ func (g *Genetic) Fitness(clouds []model.Cloud, apps []model.Application, chromo
 	//time.Sleep(101 * time.Second)
 
 	var fitnessValue float64
-	appsCopy = model.AppsCopy(apps)
 	// the fitnessValue is based on each application
 	for appIndex := 0; appIndex < len(chromosome); appIndex++ {
-		fitnessValue += g.fitnessOneApp(deployedClouds, appsCopy[appIndex], chromosome[appIndex])
+		fitnessValue += g.fitnessOneApp(deployedClouds, appsCopy, appIndex, chromosome)
 	}
 
 	return fitnessValue
@@ -240,8 +239,27 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 	return unorderedApps
 }
 
-// fitness of a single application, the fitness values is >= 0
-func (g *Genetic) fitnessOneApp(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
+// fitness of a single application, the fitness values is >= 0. Optimized time complexity: O(1)
+func (g *Genetic) fitnessOneApp(clouds []model.Cloud, apps []model.Application, appIdx int, chromosome Chromosome) float64 {
+	if chromosome[appIdx] == len(clouds) {
+		return 0
+	}
+
+	var thisTime float64
+	if apps[appIdx].IsTask { // Task: minimize execution time
+		thisTime = apps[appIdx].TaskCompletionTime
+	} else { // Service: maximize execution time
+		thisTime = apps[appIdx].StableTime
+	}
+	thisFitness := (g.RejectExecTime - thisTime) * float64(apps[appIdx].Priority)
+	if thisFitness < 0 {
+		thisFitness = 0
+	}
+	return thisFitness
+}
+
+// complex fitness of a single application, the fitness values is >= 0, maybe about O(len(apps))
+func (g *Genetic) fitnessOneAppComplex(clouds []model.Cloud, app model.Application, chosenCloudIndex int) float64 {
 	if chosenCloudIndex == len(clouds) {
 		return 0
 	}
