@@ -17,8 +17,8 @@ func main() {
 
 	var testRecords []cpmpRecord
 
-	for cp := 0.3; cp <= 1.0; cp += 0.1 {
-		for mp := 0.003; mp <= 0.02; mp += 0.001 {
+	for cp := 0.0; cp <= 1.0; cp += 0.1 {
+		for mp := 0.001; mp <= 0.02; mp += 0.001 {
 			var fitnessSum float64 = 0
 			for i := 0; i < 10; i++ {
 				fmt.Printf("testing cp: %g, mp: %g, round %d\n", cp, mp, i)
@@ -61,12 +61,12 @@ func (cmrs cpmpRecordSloce) Less(i, j int) bool {
 }
 
 func testParameters(crossoverProbability float64, mutationProbability float64) float64 {
-	var numCloud, numApp int = 10, 40
+	var numCloud, numApp int = 7, 100
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
 	//experimenttools.GenerateClouds(numCloud)
-	//experimenttools.GenerateApps(numApp, appSuffix)
+	//experimenttools.GenerateApps(numApp, appSuffix, 0.5)
 
 	// read clouds and apps from files
 	var clouds []model.Cloud
@@ -75,7 +75,7 @@ func testParameters(crossoverProbability float64, mutationProbability float64) f
 	clouds = experimenttools.ReadClouds(numCloud)
 	apps = experimenttools.ReadApps(numApp, appSuffix)
 
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, crossoverProbability, mutationProbability, 200, algorithms.RandomFitSchedule, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, crossoverProbability, mutationProbability, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, apps)
 
 	_, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {
