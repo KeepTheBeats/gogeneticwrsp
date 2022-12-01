@@ -283,10 +283,89 @@ func (nfs NSGAIIFitnessSlice) Less(i, j int) bool {
 	return nfs[i].NfLess(nfs[j])
 }
 
+func NSGAIICalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) []model.Application {
+	// initialization
+	for i := 0; i < len(clouds); i++ {
+		clouds[i].TotalTaskComplTime = 0
+		clouds[i].TmpAlloc.CPU.LogicalCores = clouds[i].Allocatable.CPU.LogicalCores
+	}
+	// save the original order of apps
+	unorderedApps := model.AppsCopy(apps)
+
+	for cloudIndex := 0; cloudIndex < len(clouds); cloudIndex++ {
+		for i := 0; i < len(clouds[cloudIndex].RunningApps); i++ {
+			appIdx := clouds[cloudIndex].RunningApps[i].AppIdx
+
+			latestStartTime := clouds[cloudIndex].TotalTaskComplTime
+
+			clouds[cloudIndex].TotalTaskComplTime = latestStartTime
+			clouds[cloudIndex].RunningApps[i].StartTime = latestStartTime
+			unorderedApps[appIdx].StartTime = latestStartTime
+
+			// calculate image pulling time, 1 Byte = 8 bits
+			imagePullTime := (clouds[cloudIndex].RunningApps[i].ImageSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondImage.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondImage.RTT / 1000) // unit: second
+
+			// An old app with image pulling done on the old cloud, image will already exist
+			if !clouds[cloudIndex].RunningApps[i].IsNew && clouds[cloudIndex].RunningApps[i].ImagePullDone && cloudIndex == clouds[cloudIndex].RunningApps[i].CloudRemainingOn {
+				imagePullTime = 0
+			}
+
+			// calculate time of transmitting data from Architecture Controller to this cloud, 1 Byte = 8 bits
+			dataInputTime := (clouds[cloudIndex].RunningApps[i].InputDataSize*8)/(clouds[cloudIndex].TmpAlloc.NetCondController.DownBw*1024*1024) + (clouds[cloudIndex].TmpAlloc.NetCondController.RTT / 1000) // unit: second
+
+			// calculate the startup time of this application
+			startUpTime := clouds[cloudIndex].RunningApps[i].StartUpCPUCycle / (clouds[cloudIndex].TmpAlloc.CPU.LogicalCores * clouds[cloudIndex].TmpAlloc.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
+
+			// For an old app already stable on the old cloud, we can simply pause/unpause it through cgroup freezer, no need to input data or start up
+			if !clouds[cloudIndex].RunningApps[i].IsNew && clouds[cloudIndex].RunningApps[i].AlreadyStable && cloudIndex == clouds[cloudIndex].RunningApps[i].CloudRemainingOn {
+				dataInputTime = 0
+				startUpTime = 0
+			}
+
+			// set image pull done time
+			clouds[cloudIndex].RunningApps[i].ImagePullDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime
+			unorderedApps[appIdx].ImagePullDoneTime = unorderedApps[appIdx].StartTime + imagePullTime
+
+			// set data input done time
+			clouds[cloudIndex].RunningApps[i].DataInputDoneTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime + dataInputTime
+			unorderedApps[appIdx].DataInputDoneTime = unorderedApps[appIdx].StartTime + imagePullTime + dataInputTime
+
+			// set stable time
+			clouds[cloudIndex].RunningApps[i].StableTime = clouds[cloudIndex].RunningApps[i].StartTime + imagePullTime + dataInputTime + startUpTime
+			unorderedApps[appIdx].StableTime = unorderedApps[appIdx].StartTime + imagePullTime + dataInputTime + startUpTime
+
+			if !clouds[cloudIndex].RunningApps[i].IsTask { // Services take up the resource
+				// take up cpu
+				clouds[cloudIndex].TmpAlloc.CPU.LogicalCores -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].TmpAlloc.CPU.BaseClock
+
+			}
+			// NSGAII consume the 3 parts of time
+			clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + startUpTime
+
+		}
+
+	}
+
+	// restore
+	for i := 0; i < len(clouds); i++ {
+		clouds[i].TmpAlloc.CPU.LogicalCores = clouds[i].Allocatable.CPU.LogicalCores
+	}
+
+	//for i := 0; i < len(unorderedApps); i++ {
+	//	fmt.Printf("app: %d, isTask: %t, accept: %t, priority: %d, startTime: %g, completionTime: %g \ndepend on [ \n, ", i, unorderedApps[i].IsTask, chromosome[i] != len(clouds), unorderedApps[i].Priority, unorderedApps[i].StartTime, unorderedApps[i].TaskCompletionTime)
+	//	for j := 0; j < len(unorderedApps[i].Depend); j++ {
+	//		fmt.Printf("(app: %d, isTask: %t, accept: %t, priority: %d, startTime: %g, completionTime: %g) \n", unorderedApps[i].Depend[j].AppIdx, unorderedApps[unorderedApps[i].Depend[j].AppIdx].IsTask, chromosome[unorderedApps[i].Depend[j].AppIdx] != len(clouds), unorderedApps[unorderedApps[i].Depend[j].AppIdx].Priority, unorderedApps[unorderedApps[i].Depend[j].AppIdx].StartTime, unorderedApps[unorderedApps[i].Depend[j].AppIdx].TaskCompletionTime)
+	//	}
+	//	fmt.Println("]")
+	//}
+	//time.Sleep(100 * time.Second)
+	return unorderedApps
+}
+
 func (n *NSGAII) Fitness(clouds []model.Cloud, apps []model.Application, chromosome Chromosome) NSGAIIFitness {
 	var deployedClouds []model.Cloud = SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
 	var appsCopy []model.Application = model.AppsCopy(apps)
-	appsCopy = CalcStartComplTime(deployedClouds, appsCopy, chromosome)
+	appsCopy = NSGAIICalcStartComplTime(deployedClouds, appsCopy, chromosome)
 	//for i := 0; i < len(deployedClouds); i++ {
 	//	sort.Sort(model.AppSlice(deployedClouds[i].RunningApps))
 	//	fmt.Println("Cloud:", i)
@@ -309,7 +388,7 @@ func (n *NSGAII) Fitness(clouds []model.Cloud, apps []model.Application, chromos
 }
 
 func (n *NSGAII) fitnessOneApp(clouds []model.Cloud, apps []model.Application, appIdx int, chromosome Chromosome) (float64, float64) {
-	if chromosome[appIdx] == len(clouds) {
+	if chromosome[appIdx] == len(clouds) || apps[appIdx].IsTask { // NSGA-II only considers services
 		return n.RejectRepairTime, n.RejectLatencyOverhead
 	}
 	var repairTime float64 = apps[appIdx].StableTime - (apps[appIdx].DataInputDoneTime - apps[appIdx].ImagePullDoneTime) // NSGA-II does not consider data input time
@@ -347,7 +426,7 @@ func (n *NSGAII) initRejectFitness(clouds []model.Cloud, apps []model.Applicatio
 	for _, chromosome := range initPopulation {
 		deployedClouds := SimulateDeploy(clouds, apps, model.Solution{SchedulingResult: chromosome})
 		appsCopy := model.AppsCopy(apps)
-		appsCopy = CalcStartComplTime(deployedClouds, appsCopy, chromosome)
+		appsCopy = NSGAIICalcStartComplTime(deployedClouds, appsCopy, chromosome)
 		for i := 0; i < len(apps); i++ {
 			thisRepairTime, thisLatencyOverhead := n.fitnessOneAppInit(deployedClouds, appsCopy, i, chromosome)
 			if thisRepairTime >= 0 {

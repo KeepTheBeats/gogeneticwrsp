@@ -206,7 +206,7 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 				if clouds[cloudIndex].RunningApps[i].IsTask { // Tasks do not take up the resources, but use all remaining resources to finish this task before handling other applications
 					// task execution time
 					execTime := clouds[cloudIndex].RunningApps[i].TaskReq.CPUCycle / (clouds[cloudIndex].TmpAlloc.CPU.LogicalCores * clouds[cloudIndex].TmpAlloc.CPU.BaseClock * 1024 * 1024 * 1024) // unit: second
-					// a task should consume the three parts of time
+					// a task should consume the 4 parts of time
 					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + startUpTime + execTime
 					clouds[cloudIndex].RunningApps[i].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
 					unorderedApps[apps[k].AppIdx].TaskCompletionTime = clouds[cloudIndex].TotalTaskComplTime
@@ -214,7 +214,7 @@ func CalcStartComplTime(clouds []model.Cloud, apps []model.Application, chromoso
 					// take up cpu
 					clouds[cloudIndex].TmpAlloc.CPU.LogicalCores -= clouds[cloudIndex].RunningApps[i].SvcReq.CPUClock / clouds[cloudIndex].TmpAlloc.CPU.BaseClock
 
-					// a service should consume the two parts of time
+					// a service should consume the 3 parts of time
 					clouds[cloudIndex].TotalTaskComplTime += imagePullTime + dataInputTime + startUpTime
 				}
 

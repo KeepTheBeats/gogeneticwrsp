@@ -131,7 +131,7 @@ func GenerateApps(numApp int, suffix string, taskProportion float64) {
 		if isTask {
 			currentTaskNum++
 			apps[i].IsTask = true
-			apps[i].TaskReq.CPUCycle = generateTaskCPU()
+			apps[i].TaskReq.CPUCycle = generateTaskCPUAlternative()
 
 			apps[i].TaskReq.Memory = chooseReqMem()
 			apps[i].TaskReq.Storage = chooseReqStor()
@@ -540,6 +540,22 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		SvcSusTime:                  make([]float64, 0),
 		TaskComplTime:               make([]float64, 0),
 	}
+	// NSGA-II
+	var NSGAIIRecorder ContinuousHelper = ContinuousHelper{
+		Name:                        "NSGAII",
+		CPUIdleRecords:              make([]float64, 0),
+		MemoryIdleRecords:           make([]float64, 0),
+		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
+		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
+		CloudsWithTime:              make([][]float64, 0),
+		AllAppComplTime:             make([]float64, 0),
+		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
+	}
 	// Multi-cloud Applications Scheduling Genetic Algorithm (MCASGA)
 	var MCASGARecorder ContinuousHelper = ContinuousHelper{
 		Name:                        "MCASGA",
@@ -750,6 +766,103 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 	// For randomFit, record the service suspension time and task completion time
 	randomFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
 
+	// NSGA-II
+	currentClouds = model.CloudsCopy(clouds)
+	totalApps = []model.Application{}
+	currentSolution = model.Solution{}
+
+	currentTime = 0 * time.Second
+
+	for i := 0; i < len(apps); i++ {
+		currentTime += appArrivalTimeIntervals[i]
+		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
+
+		// the ith applications group request comes
+		totalApps = model.CombApps(totalApps, apps[i])
+		thisAppGroup := apps[i]
+
+		nsga := algorithms.NewNSGAII(200, 5000, 1, 0.25, 250, currentClouds, thisAppGroup)
+		solution, err := nsga.Schedule(currentClouds, thisAppGroup)
+		if err != nil {
+			log.Printf("Error, app %d. Error message: %s", i, err.Error())
+		}
+
+		// get apps with all time related attributes
+		tmpClouds4Time := model.CloudsCopy(currentClouds)
+		tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
+		tmpSolution4Time := model.SolutionCopy(solution)
+		tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
+
+		timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
+
+		for j := 0; j < len(timeApps); j++ {
+			if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
+				continue
+			}
+			if timeApps[j].IsTask { // set final completion time for tasks
+				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
+			} else { // set suspension time for services
+				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
+			}
+		}
+
+		// if last group does not finish when this group generate, this group need to wait for last one
+		if i != 0 {
+			for j := 0; j < len(tmpClouds4Time); j++ {
+				if wait := NSGAIIRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
+					tmpClouds4Time[j].TotalTaskComplTime += wait
+					for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
+						if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
+							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
+						} else {
+							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+						}
+					}
+				}
+			}
+		}
+
+		// record TotalTaskComplTime of clouds
+		var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
+		var longestTime float64 = 0
+		for j := 0; j < len(tmpClouds4Time); j++ {
+			thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
+			if thisTimeRecord[j] > longestTime {
+				longestTime = thisTimeRecord[j]
+			}
+		}
+		NSGAIIRecorder.CloudsWithTime = append(NSGAIIRecorder.CloudsWithTime, thisTimeRecord)
+		NSGAIIRecorder.AllAppComplTime = append(NSGAIIRecorder.AllAppComplTime, longestTime)
+		log.Println("thisTimeRecord", thisTimeRecord)
+		log.Println("NSGAIIRecorder.AllAppComplTime", NSGAIIRecorder.AllAppComplTime)
+
+		// add the solution of this app to current solution
+		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
+
+		// deploy this app in current clouds (subtract the resources)
+		//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
+		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+
+		// RunningApps should be empty before the scheduling of the next round
+		for j := 0; j < len(currentClouds); j++ {
+			currentClouds[j].RunningApps = []model.Application{}
+		}
+
+		// evaluate current solution, current cloud, current apps
+		NSGAIIRecorder.CPUIdleRecords = append(NSGAIIRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+		NSGAIIRecorder.MemoryIdleRecords = append(NSGAIIRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+		NSGAIIRecorder.StorageIdleRecords = append(NSGAIIRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+		NSGAIIRecorder.BwIdleRecords = append(NSGAIIRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+		NSGAIIRecorder.AcceptedPriorityRateRecords = append(NSGAIIRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+		NSGAIIRecorder.AcceptedSvcPriRateRecords = append(NSGAIIRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+		NSGAIIRecorder.AcceptedTaskPriRateRecords = append(NSGAIIRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+		NSGAIIRecorder.AllAppComplTimePerPri = append(NSGAIIRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+	}
+	// For NSGA-II, record the service suspension time and task completion time
+	NSGAIIRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
+
 	// MCASGA
 	currentClouds = model.CloudsCopy(clouds)
 	totalApps = []model.Application{}
@@ -872,8 +985,8 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 	}
 	// For MCASGA, record the service suspension time and task completion time
 	MCASGARecorder.setSvcSusTaskComplTime(clouds, totalApps, totalSolution)
-	// after the service suspension time and task completion time in 3 recorders are set, we handle the rejected apps
-	setRejectedSvcTask(&firstFitRecorder, &randomFitRecorder, &MCASGARecorder)
+	// after the service suspension time and task completion time in 4 recorders are set, we handle the rejected apps
+	setRejectedSvcTask(&firstFitRecorder, &randomFitRecorder, &NSGAIIRecorder, &MCASGARecorder)
 
 	log.Println("MCASGA solution:", totalSolution.SchedulingResult)
 
@@ -893,6 +1006,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 	}
 	var ffCsvContent [][]string = generateCsvFunc(firstFitRecorder)
 	var rfCsvContent [][]string = generateCsvFunc(randomFitRecorder)
+	var nsgaCsvContent [][]string = generateCsvFunc(NSGAIIRecorder)
 	var MCASGACsvContent [][]string = generateCsvFunc(MCASGARecorder)
 
 	csvPathFunc := func(name string) string {
@@ -923,23 +1037,24 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 	}
 	writeFileFunc(csvPathFunc(firstFitRecorder.Name), ffCsvContent)
 	writeFileFunc(csvPathFunc(randomFitRecorder.Name), rfCsvContent)
+	writeFileFunc(csvPathFunc(NSGAIIRecorder.Name), nsgaCsvContent)
 	writeFileFunc(csvPathFunc(MCASGARecorder.Name), MCASGACsvContent)
 
 	// write cdf csv file of service suspension time and task completion time
 	// output csv files
 	genSvcCdfCsvFunc := func() [][]string {
 		var csvContent [][]string
-		csvContent = append(csvContent, []string{"First Fit Weighted Service Suspension Time", "Random Fit Weighted Service Suspension Time", "MCASGA Weighted Service Suspension Time"})
+		csvContent = append(csvContent, []string{"First Fit Weighted Service Suspension Time", "Random Fit Weighted Service Suspension Time", "NSGA-II Weighted Service Suspension Time", "MCASGA Weighted Service Suspension Time"})
 		for i := 0; i < len(firstFitRecorder.SvcSusTime); i++ {
-			csvContent = append(csvContent, []string{fmt.Sprintf("%g", firstFitRecorder.SvcSusTime[i]), fmt.Sprintf("%g", randomFitRecorder.SvcSusTime[i]), fmt.Sprintf("%g", MCASGARecorder.SvcSusTime[i])})
+			csvContent = append(csvContent, []string{fmt.Sprintf("%g", firstFitRecorder.SvcSusTime[i]), fmt.Sprintf("%g", randomFitRecorder.SvcSusTime[i]), fmt.Sprintf("%g", NSGAIIRecorder.SvcSusTime[i]), fmt.Sprintf("%g", MCASGARecorder.SvcSusTime[i])})
 		}
 		return csvContent
 	}
 	genTaskCdfCsvFunc := func() [][]string {
 		var csvContent [][]string
-		csvContent = append(csvContent, []string{"First Fit Weighted Task Completion Time", "Random Fit Weighted Task Completion Time", "MCASGA Weighted Task Completion Time"})
+		csvContent = append(csvContent, []string{"First Fit Weighted Task Completion Time", "Random Fit Weighted Task Completion Time", "NSGA-II Weighted Task Completion Time", "MCASGA Weighted Task Completion Time"})
 		for i := 0; i < len(firstFitRecorder.TaskComplTime); i++ {
-			csvContent = append(csvContent, []string{fmt.Sprintf("%g", firstFitRecorder.TaskComplTime[i]), fmt.Sprintf("%g", randomFitRecorder.TaskComplTime[i]), fmt.Sprintf("%g", MCASGARecorder.TaskComplTime[i])})
+			csvContent = append(csvContent, []string{fmt.Sprintf("%g", firstFitRecorder.TaskComplTime[i]), fmt.Sprintf("%g", randomFitRecorder.TaskComplTime[i]), fmt.Sprintf("%g", NSGAIIRecorder.TaskComplTime[i]), fmt.Sprintf("%g", MCASGARecorder.TaskComplTime[i])})
 		}
 		return csvContent
 	}

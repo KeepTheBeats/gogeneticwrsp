@@ -28,6 +28,13 @@ func generateTaskCPU() float64 {
 	return CPUCycle
 }
 
+// Alternative method to generate CPU cycles needed by a task
+func generateTaskCPUAlternative() float64 {
+	var CPUCycle float64
+	CPUCycle = random.RandomFloat64(157482134186.67, 289910292480.00)
+	return CPUCycle
+}
+
 // generate CPU clock that should be reserved for a Service
 func generateSvcCPU() float64 {
 	var CPUClock float64

@@ -29,7 +29,8 @@ func TestInnerChooseDepNum(t *testing.T) {
 func TestInnerGenerateTaskCPU(t *testing.T) {
 	fmt.Println("Generate 40 task CPU:")
 	for i := 0; i < 40; i++ {
-		fmt.Printf("%g G cycles\n", generateTaskCPU()/1024/1024/1024)
+		fmt.Printf("generateTaskCPU %g G cycles\n", generateTaskCPU()/1024/1024/1024)
+		fmt.Printf("generateTaskCPUAlternative %g G cycles\n", generateTaskCPUAlternative()/1024/1024/1024)
 	}
 }
 
@@ -43,7 +44,7 @@ func TestInnerGenerateSvcCPU(t *testing.T) {
 func TestInnerGenerateStartUpCPU(t *testing.T) {
 	fmt.Println("Generate 40 startup CPU:")
 	for i := 0; i < 40; i++ {
-		fmt.Printf("%g G cycles\n", generateTaskCPU()/1024/1024/1024)
+		fmt.Printf("%g G cycles\n", generateStartUpCPU()/1024/1024/1024)
 	}
 }
 
