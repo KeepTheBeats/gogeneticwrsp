@@ -16,34 +16,58 @@ func main() {
 	//log.Println("Hello World!")
 
 	var testRecords []cpmpRecord
-
-	for cp := 0.0; cp <= 1.0; cp += 0.1 {
-		for mp := 0.001; mp <= 0.02; mp += 0.001 {
-			var fitnessSum float64 = 0
-			for i := 0; i < 10; i++ {
-				fmt.Printf("testing cp: %g, mp: %g, round %d\n", cp, mp, i)
-				fitnessSum += testParameters(cp, mp)
+	var twoPointCrossover, btSelection, cbMutation bool
+	var boolValues []bool = []bool{false, true}
+	var mpMinCb, mpMaxCb, mpStepCb float64 = 0.0, 1.0, 0.05
+	var mpMinGb, mpMaxGb, mpStepGb float64 = 0.001, 0.02, 0.001
+	var mpMinThis, mpMaxThis, mpStepThis float64
+	for _, v1 := range boolValues {
+		twoPointCrossover = v1
+		for _, v2 := range boolValues {
+			btSelection = v2
+			for _, v3 := range boolValues {
+				cbMutation = v3
+				if cbMutation {
+					mpMinThis, mpMaxThis, mpStepThis = mpMinCb, mpMaxCb, mpStepCb
+				} else {
+					mpMinThis, mpMaxThis, mpStepThis = mpMinGb, mpMaxGb, mpStepGb
+				}
+				for cp := 0.0; cp <= 1.0; cp += 0.1 {
+					for mp := mpMinThis; mp <= mpMaxThis; mp += mpStepThis {
+						var fitnessSum float64 = 0
+						for i := 0; i < 10; i++ {
+							fmt.Printf("testing cp: %g, mp: %g, twoPointCrossover: %t, btSelection: %t, cbMutation: %t, round %d\n", cp, mp, twoPointCrossover, btSelection, cbMutation, i)
+							fitnessSum += testParameters(cp, mp, twoPointCrossover, btSelection, cbMutation)
+						}
+						testRecords = append(testRecords, cpmpRecord{
+							cp:                cp,
+							mp:                mp,
+							twoPointCrossover: twoPointCrossover,
+							btSelection:       btSelection,
+							cbMutation:        cbMutation,
+							fitness:           fitnessSum / 10,
+						})
+					}
+				}
 			}
-			testRecords = append(testRecords, cpmpRecord{
-				cp:      cp,
-				mp:      mp,
-				fitness: fitnessSum / 10,
-			})
 		}
 	}
 
 	sort.Sort(cpmpRecordSloce(testRecords))
 
 	for i := 0; i < len(testRecords); i++ {
-		fmt.Printf("cp: %g, mp: %g, fitness: %g\n", testRecords[i].cp, testRecords[i].mp, testRecords[i].fitness)
+		fmt.Printf("cp: %g, mp: %g, twoPointCrossover: %t, btSelection: %t, cbMutation: %t, fitness: %g\n", testRecords[i].cp, testRecords[i].mp, testRecords[i].twoPointCrossover, testRecords[i].btSelection, testRecords[i].cbMutation, testRecords[i].fitness)
 	}
 
 }
 
 type cpmpRecord struct {
-	cp      float64
-	mp      float64
-	fitness float64
+	cp                float64
+	mp                float64
+	twoPointCrossover bool
+	btSelection       bool
+	cbMutation        bool
+	fitness           float64
 }
 
 type cpmpRecordSloce []cpmpRecord
@@ -60,7 +84,7 @@ func (cmrs cpmpRecordSloce) Less(i, j int) bool {
 	return cmrs[i].fitness < cmrs[j].fitness
 }
 
-func testParameters(crossoverProbability float64, mutationProbability float64) float64 {
+func testParameters(crossoverProbability float64, mutationProbability float64, twoPointCrossover, btSelection, cbMutation bool) float64 {
 	var numCloud, numApp int = 7, 100
 	var appSuffix string = "0"
 
@@ -75,7 +99,14 @@ func testParameters(crossoverProbability float64, mutationProbability float64) f
 	clouds = experimenttools.ReadClouds(numCloud)
 	apps = experimenttools.ReadApps(numApp, appSuffix)
 
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, crossoverProbability, mutationProbability, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, apps)
+	var crossoverOperator func(algorithms.Chromosome, algorithms.Chromosome) (algorithms.Chromosome, algorithms.Chromosome)
+	if twoPointCrossover {
+		crossoverOperator = algorithms.TwoPointCrossOver
+	} else {
+		crossoverOperator = algorithms.OnePointCrossOver
+	}
+
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, crossoverProbability, mutationProbability, 250, algorithms.RandomFitSchedule, crossoverOperator, btSelection, cbMutation, clouds, apps)
 
 	_, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {

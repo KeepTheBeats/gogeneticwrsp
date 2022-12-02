@@ -370,21 +370,50 @@ type OneTimeHelper struct {
 
 // OneTimeExperiment is that all applications are deployed in one time and handled together
 func OneTimeExperiment(clouds []model.Cloud, apps []model.Application) {
-	gaRandomInit := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, apps)
-	gaUndeployedInit := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeUndeployedChromosome, algorithms.OnePointCrossOver, clouds, apps)
-	//gaRandomInit := algorithms.NewGenetic(1000, 5000, 0.7, 0.007, 5000, algorithms.RandomFitSchedule, clouds, apps)
-	//gaUndeployedInit := algorithms.NewGenetic(1000, 5000, 0.7, 0.007, 5000, algorithms.InitializeUndeployedChromosome, clouds, apps)
+	ga1pcbtscbm := algorithms.NewGenetic(200, 5000, 0.3, 0.25, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, true, clouds, apps)
+	ga1pcrhscbm := algorithms.NewGenetic(200, 5000, 0.3, 0.25, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, true, clouds, apps)
+	ga1pcbtsgbm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, apps)
+	ga1pcrhsgbm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, false, clouds, apps)
+	ga2pcbtscbm := algorithms.NewGenetic(200, 5000, 0.3, 0.25, 250, algorithms.RandomFitSchedule, algorithms.TwoPointCrossOver, true, true, clouds, apps)
+	ga2pcrhscbm := algorithms.NewGenetic(200, 5000, 0.3, 0.25, 250, algorithms.RandomFitSchedule, algorithms.TwoPointCrossOver, false, true, clouds, apps)
+	ga2pcbtsgbm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.TwoPointCrossOver, true, false, clouds, apps)
+	ga2pcrhsgbm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.TwoPointCrossOver, false, false, clouds, apps)
+
 	ff := algorithms.NewFirstFit(clouds, apps)
 	rf := algorithms.NewRandomFit(clouds, apps)
 
 	var experimenters []OneTimeHelper = []OneTimeHelper{
 		{
-			Name:                "Genetic Random Init",
-			ExperimentAlgorithm: gaRandomInit,
+			Name:                "ga/1-point-Crossover/binary-tournament-Selection/chromosome-based-Mutation",
+			ExperimentAlgorithm: ga1pcbtscbm,
 		},
 		{
-			Name:                "Genetic Undeployed Init",
-			ExperimentAlgorithm: gaUndeployedInit,
+			Name:                "ga/1-point-Crossover/roulette-wheel-Selection/chromosome-based-Mutation",
+			ExperimentAlgorithm: ga1pcrhscbm,
+		},
+		{
+			Name:                "ga/1-point-Crossover/binary-tournament-Selection/gene-based-Mutation",
+			ExperimentAlgorithm: ga1pcbtsgbm,
+		},
+		{
+			Name:                "ga/1-point-Crossover/roulette-wheel-Selection/gene-based-Mutation",
+			ExperimentAlgorithm: ga1pcrhsgbm,
+		},
+		{
+			Name:                "ga/2-point-Crossover/binary-tournament-Selection/chromosome-based-Mutation",
+			ExperimentAlgorithm: ga2pcbtscbm,
+		},
+		{
+			Name:                "ga/2-point-Crossover/roulette-wheel-Selection/chromosome-based-Mutation",
+			ExperimentAlgorithm: ga2pcrhscbm,
+		},
+		{
+			Name:                "ga/2-point-Crossover/binary-tournament-Selection/gene-based-Mutation",
+			ExperimentAlgorithm: ga2pcbtsgbm,
+		},
+		{
+			Name:                "ga/2-point-Crossover/roulette-wheel-Selection/gene-based-Mutation",
+			ExperimentAlgorithm: ga2pcrhsgbm,
 		},
 		{
 			Name:                "First Fit",
@@ -405,9 +434,9 @@ func OneTimeExperiment(clouds []model.Cloud, apps []model.Application) {
 	}
 
 	for _, experimenter := range experimenters {
-		log.Println(experimenter.Name, "CPUClock Idle Rate:", algorithms.CPUIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Memory Idle Rate:", algorithms.MemoryIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Storage Idle Rate:", algorithms.StorageIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Bandwidth Idle Rate:", algorithms.BwIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Total Accepted Priority:", algorithms.AcceptedPriority(clouds, apps, experimenter.ExperimentSolution.SchedulingResult))
+		//log.Println(experimenter.Name, "CPUClock Idle Rate:", algorithms.CPUIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Memory Idle Rate:", algorithms.MemoryIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Storage Idle Rate:", algorithms.StorageIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Bandwidth Idle Rate:", algorithms.BwIdleRate(clouds, apps, experimenter.ExperimentSolution.SchedulingResult), "Total Accepted Priority:", algorithms.AcceptedPriority(clouds, apps, experimenter.ExperimentSolution.SchedulingResult))
 		if v, ok := experimenter.ExperimentAlgorithm.(*algorithms.Genetic); ok {
-			log.Println("Got Iteration:", v.BestUntilNowUpdateIterations[len(v.BestUntilNowUpdateIterations)-1], v.BestAcceptableUntilNowUpdateIterations[len(v.BestAcceptableUntilNowUpdateIterations)-1])
+			log.Println(experimenter.Name, "Got Iteration:", v.BestAcceptableUntilNowUpdateIterations[len(v.BestAcceptableUntilNowUpdateIterations)-1], "best Fitness:", v.FitnessRecordBestAcceptableUntilNow[len(v.FitnessRecordBestAcceptableUntilNow)-1])
 		}
 	}
 }
@@ -914,7 +943,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		lastApps = model.AppsCopy(appsToDeploy)
 
 		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, totalApps)
-		ga := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, appsToDeploy)
+		ga := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, false, clouds, appsToDeploy)
 		solution, err := ga.Schedule(clouds, appsToDeploy)
 		if err != nil {
 			log.Printf("Error, app %d. Error message: %s", i, err.Error())

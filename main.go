@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gogeneticwrsp/algorithms"
 	"log"
+	"time"
 
 	"gogeneticwrsp/experimenttools"
 	"gogeneticwrsp/model"
@@ -15,7 +16,8 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 10, 70
+	//var numCloud, numApp int = 10, 140
+	var numCloud, numApp int = 7, 100
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
@@ -67,11 +69,13 @@ func main() {
 	fmt.Println("Sto:", StoReq, StoCapa, StoReq/StoCapa)
 	fmt.Println("BW:", BWReq, BWCapa, BWReq/BWCapa)
 
+	before := time.Now()
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, false, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
+	after := time.Now()
 	if err != nil {
 		//log.Printf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
 		log.Panicf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
@@ -103,6 +107,7 @@ func main() {
 	}
 
 	log.Println("solution:", solution)
+	log.Println("calculation time:", after.Sub(before).Seconds())
 
 	// draw geneticAlgorithm.FitnessRecordIterationBest and geneticAlgorithm.FitnessRecordBestUntilNow on a line chart
 	geneticAlgorithm.DrawChart()

@@ -46,11 +46,13 @@ type Genetic struct {
 
 	InitFunc      func([]model.Cloud, []model.Application) []int        // the function to initialize populations
 	CrossoverFunc func(Chromosome, Chromosome) (Chromosome, Chromosome) // crossover operator
+	BtSelection   bool                                                  // true, use binary tournament selection; false, use roulette-wheel selection
+	CbMutation    bool                                                  // true, use chromosome-based mutation; false, use gene-based mutation
 
 	RejectExecTime float64 // We set this time as the start time of rejected services and completion time of rejected tasks unit second
 }
 
-func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability float64, mutationProbability float64, stopNoUpdateIteration int, initFunc func([]model.Cloud, []model.Application) []int, crossoverFunc func(Chromosome, Chromosome) (Chromosome, Chromosome), clouds []model.Cloud, apps []model.Application) *Genetic {
+func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability float64, mutationProbability float64, stopNoUpdateIteration int, initFunc func([]model.Cloud, []model.Application) []int, crossoverFunc func(Chromosome, Chromosome) (Chromosome, Chromosome), btSelection bool, cbMutation bool, clouds []model.Cloud, apps []model.Application) *Genetic {
 	if err := model.DependencyValid(apps); err != nil {
 		log.Panicf("model.DependencyValid(apps), err: %s", err.Error())
 	}
@@ -106,6 +108,8 @@ func NewGenetic(chromosomesCount int, iterationCount int, crossoverProbability f
 		SelectableCloudsForApps:                selectableCloudsForApps,
 		InitFunc:                               initFunc,
 		CrossoverFunc:                          crossoverFunc,
+		BtSelection:                            btSelection,
+		CbMutation:                             cbMutation,
 	}
 }
 
@@ -475,6 +479,7 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 	}
 
 	// select g.ChromosomesCount chromosomes to generate a new population
+	tmpForPick := make([]int, len(fitnesses))
 	var newPopulation Population
 	var bestFitnessInThisIteration float64 = -1
 	var bestFitnessInThisIterationIndex int
@@ -483,12 +488,24 @@ func (g *Genetic) selectionOperator(clouds []model.Cloud, apps []model.Applicati
 
 	for i := 0; i < g.ChromosomesCount; i++ {
 
-		// roulette-wheel selection
-		// selectionThreshold is a random float64 in [0, biggest cumulative fitness])
-		selectionThreshold := random.RandomFloat64(0, cumulativeFitnesses[len(cumulativeFitnesses)-1])
-		// selected the smallest cumulativeFitnesses that is begger than selectionThreshold
-		selectedChromosomeIndex := sort.SearchFloat64s(cumulativeFitnesses, selectionThreshold)
-		//log.Printf("selectionThreshold %f,selectedChromosomeIndex %d", selectionThreshold, selectedChromosomeIndex)
+		var selectedChromosomeIndex int
+
+		if g.BtSelection {
+			// binary tournament selection
+			picked := random.RandomPickN(tmpForPick, 2)
+			if fitnesses[picked[0]] > fitnesses[picked[1]] {
+				selectedChromosomeIndex = picked[0]
+			} else {
+				selectedChromosomeIndex = picked[1]
+			}
+		} else {
+			// roulette-wheel selection
+			// selectionThreshold is a random float64 in [0, biggest cumulative fitness])
+			selectionThreshold := random.RandomFloat64(0, cumulativeFitnesses[len(cumulativeFitnesses)-1])
+			// selected the smallest cumulativeFitnesses that is begger than selectionThreshold
+			selectedChromosomeIndex = sort.SearchFloat64s(cumulativeFitnesses, selectionThreshold)
+			//log.Printf("selectionThreshold %f,selectedChromosomeIndex %d", selectionThreshold, selectedChromosomeIndex)
+		}
 
 		// cannot directly append population[selectedChromosomeIndex], otherwise, the new population may be changed by strange reasons
 		newChromosome := make(Chromosome, len(population[selectedChromosomeIndex]))
@@ -611,25 +628,33 @@ func (g *Genetic) mutationOperator(clouds []model.Cloud, apps []model.Applicatio
 
 	// Traverse every gene. Every gene has a probability of g.MutationProbability that it do mutation
 	for i := 0; i < len(copyPopulation); i++ {
-		for j := 0; j < len(copyPopulation[i]); j++ {
-			// use random to judge whether a gene needs mutation
+		if g.CbMutation {
+			// chromosome-based mutation
 			if random.RandomFloat64(0, 1) < g.MutationProbability {
-				var newGene int = g.randomSelect(j)
-				// make sure that the mutated gene is different with the original one
-				for newGene != len(clouds) && newGene == copyPopulation[i][j] && len(g.SelectableCloudsForApps[j]) > 1 {
-					newGene = g.randomSelect(j)
-				}
-				//log.Printf("gene [%d][%d] mutates from %d to %d\n", i, j, copyPopulation[i][j], newGene)
-				copyPopulation[i][j] = newGene
+				copyPopulation[i] = RandomFitSchedule(clouds, apps)
 			}
-		}
+		} else {
+			// gene-based mutation
+			for j := 0; j < len(copyPopulation[i]); j++ {
+				// use random to judge whether a gene needs mutation
+				if random.RandomFloat64(0, 1) < g.MutationProbability {
+					var newGene int = g.randomSelect(j)
+					// make sure that the mutated gene is different with the original one
+					for newGene != len(clouds) && newGene == copyPopulation[i][j] && len(g.SelectableCloudsForApps[j]) > 1 {
+						newGene = g.randomSelect(j)
+					}
+					//log.Printf("gene [%d][%d] mutates from %d to %d\n", i, j, copyPopulation[i][j], newGene)
+					copyPopulation[i][j] = newGene
+				}
+			}
 
-		fixDependence(clouds, apps, copyPopulation[i])
+			fixDependence(clouds, apps, copyPopulation[i])
 
-		// After mutation, if the chromosome becomes unacceptable, we discard it, and randomly generate a new acceptable one
-		// This is to control the population mutate to good direction
-		if !Acceptable(clouds, apps, copyPopulation[i]) {
-			copyPopulation[i] = RandomFitSchedule(clouds, apps)
+			// After mutation, if the chromosome becomes unacceptable, we discard it, and randomly generate a new acceptable one
+			// This is to control the population mutate to good direction
+			if !Acceptable(clouds, apps, copyPopulation[i]) {
+				copyPopulation[i] = RandomFitSchedule(clouds, apps)
+			}
 		}
 	}
 
