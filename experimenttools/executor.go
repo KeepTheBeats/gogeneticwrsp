@@ -943,7 +943,7 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 		lastApps = model.AppsCopy(appsToDeploy)
 
 		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, totalApps)
-		ga := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, false, clouds, appsToDeploy)
+		ga := algorithms.NewGenetic(200, 5000, 0.4, 0.003, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, appsToDeploy)
 		solution, err := ga.Schedule(clouds, appsToDeploy)
 		if err != nil {
 			log.Printf("Error, app %d. Error message: %s", i, err.Error())

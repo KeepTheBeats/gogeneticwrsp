@@ -40,7 +40,7 @@ func TestNoChangeMCASGA(t *testing.T) {
 	oriClouds := model.CloudsCopy(clouds)
 	oriApps := model.AppsCopy(apps)
 
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.007, 200, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, false, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.4, 0.003, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {

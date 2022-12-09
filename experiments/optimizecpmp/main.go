@@ -85,7 +85,7 @@ func (cmrs cpmpRecordSloce) Less(i, j int) bool {
 }
 
 func testParameters(crossoverProbability float64, mutationProbability float64, twoPointCrossover, btSelection, cbMutation bool) float64 {
-	var numCloud, numApp int = 7, 100
+	var numCloud, numApp int = 5, 40
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
@@ -106,7 +106,7 @@ func testParameters(crossoverProbability float64, mutationProbability float64, t
 		crossoverOperator = algorithms.OnePointCrossOver
 	}
 
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, crossoverProbability, mutationProbability, 250, algorithms.RandomFitSchedule, crossoverOperator, btSelection, cbMutation, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(100, 5000, crossoverProbability, mutationProbability, 100, algorithms.RandomFitSchedule, crossoverOperator, btSelection, cbMutation, clouds, apps)
 
 	_, err := geneticAlgorithm.Schedule(clouds, apps)
 	if err != nil {

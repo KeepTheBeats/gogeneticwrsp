@@ -16,8 +16,8 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	//var numCloud, numApp int = 10, 140
-	var numCloud, numApp int = 7, 100
+	var numCloud, numApp int = 10, 140
+	//var numCloud, numApp int = 5, 40
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
@@ -72,7 +72,7 @@ func main() {
 	before := time.Now()
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
-	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.3, 0.001, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, false, false, clouds, apps)
+	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.4, 0.003, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, apps)
 
 	solution, err := geneticAlgorithm.Schedule(clouds, apps)
 	after := time.Now()
