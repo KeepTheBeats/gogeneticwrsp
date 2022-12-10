@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestSchedule(t *testing.T) {
+func TestNsgaiiSchedule(t *testing.T) {
 	log.SetFlags(0 | log.Lshortfile)
 
 	var numCloud, numApp int = 10, 50

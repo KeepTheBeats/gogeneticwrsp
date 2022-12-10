@@ -726,6 +726,11 @@ func (g *Genetic) initRejectTime(clouds []model.Cloud, apps []model.Application,
 
 		}
 	}
+	if nonZeroChroNum == 0 {
+		log.Println("nonZeroChroNum is 0")
+		g.RejectExecTime = 0
+		return
+	}
 
 	sort.Float64s(complTimes)
 

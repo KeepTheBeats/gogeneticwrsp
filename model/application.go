@@ -56,6 +56,16 @@ func DependencyValid(apps []Application) error {
 	return nil
 }
 
+// CheckDepend check whether apps[i] depends on apps[j]
+func CheckDepend(apps []Application, i, j int) bool {
+	for k := 0; k < len(apps[i].Depend); k++ {
+		if apps[i].Depend[k].AppIdx == j {
+			return true
+		}
+	}
+	return false
+}
+
 // CombApps combine two application slices
 func CombApps(a, b []Application) []Application {
 	aCopy := AppsCopy(a)
