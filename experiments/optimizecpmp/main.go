@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"go/build"
 	"gogeneticwrsp/algorithms"
 	"gogeneticwrsp/experimenttools"
 	"gogeneticwrsp/model"
 	"log"
+	"os"
+	"runtime"
 	"sort"
 )
 
@@ -35,9 +39,12 @@ func main() {
 				for cp := 0.0; cp <= 1.0; cp += 0.1 {
 					for mp := mpMinThis; mp <= mpMaxThis; mp += mpStepThis {
 						var fitnessSum float64 = 0
+						var fitnesses []float64
 						for i := 0; i < 10; i++ {
 							fmt.Printf("testing cp: %g, mp: %g, twoPointCrossover: %t, btSelection: %t, cbMutation: %t, round %d\n", cp, mp, twoPointCrossover, btSelection, cbMutation, i)
-							fitnessSum += testParameters(cp, mp, twoPointCrossover, btSelection, cbMutation)
+							thisFitness := testParameters(cp, mp, twoPointCrossover, btSelection, cbMutation)
+							fitnessSum += thisFitness
+							fitnesses = append(fitnesses, thisFitness)
 						}
 						testRecords = append(testRecords, cpmpRecord{
 							cp:                cp,
@@ -46,6 +53,7 @@ func main() {
 							btSelection:       btSelection,
 							cbMutation:        cbMutation,
 							fitness:           fitnessSum / 10,
+							fitnesses:         fitnesses,
 						})
 					}
 				}
@@ -59,6 +67,38 @@ func main() {
 		fmt.Printf("cp: %g, mp: %g, twoPointCrossover: %t, btSelection: %t, cbMutation: %t, fitness: %g\n", testRecords[i].cp, testRecords[i].mp, testRecords[i].twoPointCrossover, testRecords[i].btSelection, testRecords[i].cbMutation, testRecords[i].fitness)
 	}
 
+	var outFitness []float64 = testRecords[len(testRecords)-1].fitnesses
+
+	var csvContent [][]string
+	csvContent = append(csvContent, []string{"round", "fitnesses"})
+	round := 1
+
+	for i := 0; i < len(outFitness); i++ {
+		csvContent = append(csvContent, []string{fmt.Sprintf("%d", round), fmt.Sprintf("%f", outFitness[i])})
+		round++
+	}
+
+	var csvPath string
+	if runtime.GOOS == "windows" {
+		csvPath = fmt.Sprintf("%s\\src\\gogeneticwrsp\\experiments\\optimizecpmp\\validateaverage.csv", build.Default.GOPATH)
+	} else {
+		csvPath = fmt.Sprintf("%s/src/gogeneticwrsp/experiments/optimizecpmp/validateaverage.csv", build.Default.GOPATH)
+	}
+
+	f, err := os.Create(csvPath)
+	defer f.Close()
+	if err != nil {
+		log.Fatalln("Fatal: ", err)
+	}
+	w := csv.NewWriter(f)
+	defer w.Flush()
+
+	for _, record := range csvContent {
+		if err := w.Write(record); err != nil {
+			log.Fatalf("write record %v, error: %s", record, err.Error())
+		}
+	}
+
 }
 
 type cpmpRecord struct {
@@ -68,6 +108,7 @@ type cpmpRecord struct {
 	btSelection       bool
 	cbMutation        bool
 	fitness           float64
+	fitnesses         []float64
 }
 
 type cpmpRecordSloce []cpmpRecord
