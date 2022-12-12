@@ -25,8 +25,8 @@ func TestHagaSchedule(t *testing.T) {
 	clouds = experimenttools.ReadClouds(numCloud)
 	apps = experimenttools.ReadApps(numApp, appSuffix)
 
-	nagaAlgorithm := algorithms.NewHAGA(10, 0.6, 200, 5000, 0.6, 0.7, 250, clouds, apps)
-	solution, err := nagaAlgorithm.Schedule(clouds, apps)
+	hagaAlgorithm := algorithms.NewHAGA(10, 0.6, 200, 5000, 0.6, 0.7, 250, clouds, apps)
+	solution, err := hagaAlgorithm.Schedule(clouds, apps)
 	if err != nil {
 		log.Panicf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
 	}
