@@ -461,6 +461,96 @@ type ContinuousHelper struct {
 	maxTaskComplTime float64
 }
 
+func NewFirstFitRecorder() ContinuousHelper {
+	return ContinuousHelper{
+		Name:                        "First Fit",
+		CPUIdleRecords:              make([]float64, 0),
+		MemoryIdleRecords:           make([]float64, 0),
+		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
+		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
+		CloudsWithTime:              make([][]float64, 0),
+		AllAppComplTime:             make([]float64, 0),
+		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
+	}
+}
+
+func NewRandomFitRecorder() ContinuousHelper {
+	return ContinuousHelper{
+		Name:                        "Random Fit",
+		CPUIdleRecords:              make([]float64, 0),
+		MemoryIdleRecords:           make([]float64, 0),
+		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
+		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
+		CloudsWithTime:              make([][]float64, 0),
+		AllAppComplTime:             make([]float64, 0),
+		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
+	}
+}
+
+func NewNSGAIIRecorder() ContinuousHelper {
+	return ContinuousHelper{
+		Name:                        "NSGAII",
+		CPUIdleRecords:              make([]float64, 0),
+		MemoryIdleRecords:           make([]float64, 0),
+		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
+		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
+		CloudsWithTime:              make([][]float64, 0),
+		AllAppComplTime:             make([]float64, 0),
+		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
+	}
+}
+
+func NewHAGARecorder() ContinuousHelper {
+	return ContinuousHelper{
+		Name:                        "HAGA",
+		CPUIdleRecords:              make([]float64, 0),
+		MemoryIdleRecords:           make([]float64, 0),
+		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
+		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
+		CloudsWithTime:              make([][]float64, 0),
+		AllAppComplTime:             make([]float64, 0),
+		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
+	}
+}
+
+func NewMCASGARecorder() ContinuousHelper {
+	return ContinuousHelper{
+		Name:                        "MCASGA",
+		CPUIdleRecords:              make([]float64, 0),
+		MemoryIdleRecords:           make([]float64, 0),
+		StorageIdleRecords:          make([]float64, 0),
+		BwIdleRecords:               make([]float64, 0),
+		AcceptedPriorityRateRecords: make([]float64, 0),
+		AcceptedSvcPriRateRecords:   make([]float64, 0),
+		AcceptedTaskPriRateRecords:  make([]float64, 0),
+		CloudsWithTime:              make([][]float64, 0),
+		AllAppComplTime:             make([]float64, 0),
+		AllAppComplTimePerPri:       make([]float64, 0),
+		SvcSusTime:                  make([]float64, 0),
+		TaskComplTime:               make([]float64, 0),
+	}
+}
+
 // we use the priority of each app as the weight of each time value
 func (ch *ContinuousHelper) setSvcSusTaskComplTime(clouds []model.Cloud, totalApps []model.Application, currentSolution model.Solution) {
 	ch.maxTaskComplTime, ch.maxSvcSusTime = 0, 0
@@ -514,7 +604,7 @@ func setRejectedSvcTask(recorders ...*ContinuousHelper) {
 }
 
 // ContinuousExperiment is that the applications are deployed one by one. In one time, we only handle one application.
-func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appArrivalTimeIntervals []time.Duration) {
+func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appArrivalTimeIntervals []time.Duration, repeatCount int) {
 	// if an app is remaining, its completion time may change, so I need the original index to update it;
 	SetOriIdx(apps)
 	SetGeneratedTime(apps, appArrivalTimeIntervals)
@@ -538,598 +628,673 @@ func ContinuousExperiment(clouds []model.Cloud, apps [][]model.Application, appA
 
 	var currentTime time.Duration
 
-	var firstFitRecorder ContinuousHelper = ContinuousHelper{
-		Name:                        "First Fit",
-		CPUIdleRecords:              make([]float64, 0),
-		MemoryIdleRecords:           make([]float64, 0),
-		StorageIdleRecords:          make([]float64, 0),
-		BwIdleRecords:               make([]float64, 0),
-		AcceptedPriorityRateRecords: make([]float64, 0),
-		AcceptedSvcPriRateRecords:   make([]float64, 0),
-		AcceptedTaskPriRateRecords:  make([]float64, 0),
-		CloudsWithTime:              make([][]float64, 0),
-		AllAppComplTime:             make([]float64, 0),
-		AllAppComplTimePerPri:       make([]float64, 0),
-		SvcSusTime:                  make([]float64, 0),
-		TaskComplTime:               make([]float64, 0),
-	}
-	var randomFitRecorder ContinuousHelper = ContinuousHelper{
-		Name:                        "Random Fit",
-		CPUIdleRecords:              make([]float64, 0),
-		MemoryIdleRecords:           make([]float64, 0),
-		StorageIdleRecords:          make([]float64, 0),
-		BwIdleRecords:               make([]float64, 0),
-		AcceptedPriorityRateRecords: make([]float64, 0),
-		AcceptedSvcPriRateRecords:   make([]float64, 0),
-		AcceptedTaskPriRateRecords:  make([]float64, 0),
-		CloudsWithTime:              make([][]float64, 0),
-		AllAppComplTime:             make([]float64, 0),
-		AllAppComplTimePerPri:       make([]float64, 0),
-		SvcSusTime:                  make([]float64, 0),
-		TaskComplTime:               make([]float64, 0),
-	}
+	// for the final result
+	var firstFitRecorder ContinuousHelper = NewFirstFitRecorder()
+	var randomFitRecorder ContinuousHelper = NewRandomFitRecorder()
 	// NSGA-II
-	var NSGAIIRecorder ContinuousHelper = ContinuousHelper{
-		Name:                        "NSGAII",
-		CPUIdleRecords:              make([]float64, 0),
-		MemoryIdleRecords:           make([]float64, 0),
-		StorageIdleRecords:          make([]float64, 0),
-		BwIdleRecords:               make([]float64, 0),
-		AcceptedPriorityRateRecords: make([]float64, 0),
-		AcceptedSvcPriRateRecords:   make([]float64, 0),
-		AcceptedTaskPriRateRecords:  make([]float64, 0),
-		CloudsWithTime:              make([][]float64, 0),
-		AllAppComplTime:             make([]float64, 0),
-		AllAppComplTimePerPri:       make([]float64, 0),
-		SvcSusTime:                  make([]float64, 0),
-		TaskComplTime:               make([]float64, 0),
-	}
+	var NSGAIIRecorder ContinuousHelper = NewNSGAIIRecorder()
 	// HAGA
-	var HAGARecorder ContinuousHelper = ContinuousHelper{
-		Name:                        "HAGA",
-		CPUIdleRecords:              make([]float64, 0),
-		MemoryIdleRecords:           make([]float64, 0),
-		StorageIdleRecords:          make([]float64, 0),
-		BwIdleRecords:               make([]float64, 0),
-		AcceptedPriorityRateRecords: make([]float64, 0),
-		AcceptedSvcPriRateRecords:   make([]float64, 0),
-		AcceptedTaskPriRateRecords:  make([]float64, 0),
-		CloudsWithTime:              make([][]float64, 0),
-		AllAppComplTime:             make([]float64, 0),
-		AllAppComplTimePerPri:       make([]float64, 0),
-		SvcSusTime:                  make([]float64, 0),
-		TaskComplTime:               make([]float64, 0),
-	}
+	var HAGARecorder ContinuousHelper = NewHAGARecorder()
 	// Multi-cloud Applications Scheduling Genetic Algorithm (MCASGA)
-	var MCASGARecorder ContinuousHelper = ContinuousHelper{
-		Name:                        "MCASGA",
-		CPUIdleRecords:              make([]float64, 0),
-		MemoryIdleRecords:           make([]float64, 0),
-		StorageIdleRecords:          make([]float64, 0),
-		BwIdleRecords:               make([]float64, 0),
-		AcceptedPriorityRateRecords: make([]float64, 0),
-		AcceptedSvcPriRateRecords:   make([]float64, 0),
-		AcceptedTaskPriRateRecords:  make([]float64, 0),
-		CloudsWithTime:              make([][]float64, 0),
-		AllAppComplTime:             make([]float64, 0),
-		AllAppComplTimePerPri:       make([]float64, 0),
-		SvcSusTime:                  make([]float64, 0),
-		TaskComplTime:               make([]float64, 0),
+	var MCASGARecorder ContinuousHelper = NewMCASGARecorder()
+
+	// for repeating
+	var firstFitRecorders []ContinuousHelper = make([]ContinuousHelper, repeatCount)
+	var randomFitRecorders []ContinuousHelper = make([]ContinuousHelper, repeatCount)
+	var NSGAIIRecorders []ContinuousHelper = make([]ContinuousHelper, repeatCount)
+	var HAGARecorders []ContinuousHelper = make([]ContinuousHelper, repeatCount)
+	var MCASGARecorders []ContinuousHelper = make([]ContinuousHelper, repeatCount)
+	for curRepeatCount := 0; curRepeatCount < repeatCount; curRepeatCount++ {
+		firstFitRecorders[curRepeatCount] = NewFirstFitRecorder()
+		randomFitRecorders[curRepeatCount] = NewRandomFitRecorder()
+		NSGAIIRecorders[curRepeatCount] = NewNSGAIIRecorder()
+		HAGARecorders[curRepeatCount] = NewHAGARecorder()
+		MCASGARecorders[curRepeatCount] = NewMCASGARecorder()
 	}
 
-	// First Fit
-	currentClouds = model.CloudsCopy(clouds)
-	totalApps = []model.Application{}
-	currentSolution = model.Solution{}
+	var oneRepeat func(*ContinuousHelper, *ContinuousHelper, *ContinuousHelper, *ContinuousHelper, *ContinuousHelper) = func(firstFitRecorder *ContinuousHelper, randomFitRecorder *ContinuousHelper, NSGAIIRecorder *ContinuousHelper, HAGARecorder *ContinuousHelper, MCASGARecorder *ContinuousHelper) {
+		// First Fit
+		currentClouds = model.CloudsCopy(clouds)
+		totalApps = []model.Application{}
+		currentSolution = model.Solution{}
 
-	currentTime = 0 * time.Second
+		currentTime = 0 * time.Second
 
-	for i := 0; i < len(apps); i++ {
-		currentTime += appArrivalTimeIntervals[i]
-		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
+		for i := 0; i < len(apps); i++ {
+			currentTime += appArrivalTimeIntervals[i]
+			log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
 
-		// the ith applications group request comes
-		totalApps = model.CombApps(totalApps, apps[i])
-		thisAppGroup := apps[i]
+			// the ith applications group request comes
+			totalApps = model.CombApps(totalApps, apps[i])
+			thisAppGroup := apps[i]
 
-		ff := algorithms.NewFirstFit(currentClouds, thisAppGroup)
-		solution, err := ff.Schedule(currentClouds, thisAppGroup)
-		if err != nil {
-			log.Printf("Error, app %d. Error message: %s", i, err.Error())
-		}
-
-		// get apps with all time related attributes
-		tmpClouds4Time := model.CloudsCopy(currentClouds)
-		tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
-		tmpSolution4Time := model.SolutionCopy(solution)
-		tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
-
-		timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
-
-		for j := 0; j < len(timeApps); j++ {
-			if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
-				continue
+			ff := algorithms.NewFirstFit(currentClouds, thisAppGroup)
+			solution, err := ff.Schedule(currentClouds, thisAppGroup)
+			if err != nil {
+				log.Printf("Error, app %d. Error message: %s", i, err.Error())
 			}
-			if timeApps[j].IsTask { // set final completion time for tasks
-				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
-			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
-			}
-		}
 
-		// if last group does not finish when this group generate, this group need to wait for last one
-		if i != 0 {
-			for j := 0; j < len(tmpClouds4Time); j++ {
-				if wait := firstFitRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
-					tmpClouds4Time[j].TotalTaskComplTime += wait
-					for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
-						if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
-						} else {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+			// get apps with all time related attributes
+			tmpClouds4Time := model.CloudsCopy(currentClouds)
+			tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
+			tmpSolution4Time := model.SolutionCopy(solution)
+			tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
+
+			timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
+
+			for j := 0; j < len(timeApps); j++ {
+				if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
+					continue
+				}
+				if timeApps[j].IsTask { // set final completion time for tasks
+					totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
+				} else { // set suspension time for services
+					totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
+				}
+			}
+
+			// if last group does not finish when this group generate, this group need to wait for last one
+			if i != 0 {
+				for j := 0; j < len(tmpClouds4Time); j++ {
+					if wait := firstFitRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
+						tmpClouds4Time[j].TotalTaskComplTime += wait
+						for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
+							if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
+							} else {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+							}
 						}
 					}
 				}
 			}
-		}
 
-		// record TotalTaskComplTime of clouds
-		var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
-		var longestTime float64 = 0
-		for j := 0; j < len(tmpClouds4Time); j++ {
-			thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
-			if thisTimeRecord[j] > longestTime {
-				longestTime = thisTimeRecord[j]
-			}
-		}
-		firstFitRecorder.CloudsWithTime = append(firstFitRecorder.CloudsWithTime, thisTimeRecord)
-		firstFitRecorder.AllAppComplTime = append(firstFitRecorder.AllAppComplTime, longestTime)
-		log.Println("thisTimeRecord", thisTimeRecord)
-		log.Println("firstFitRecorder.AllAppComplTime", firstFitRecorder.AllAppComplTime)
-
-		// add the solution of this app to current solution
-		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
-
-		// deploy this app in current clouds (subtract the resources)
-		//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
-		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
-
-		// RunningApps should be empty before the scheduling of the next round
-		for j := 0; j < len(currentClouds); j++ {
-			currentClouds[j].RunningApps = []model.Application{}
-		}
-
-		// evaluate current solution, current cloud, current apps
-		firstFitRecorder.CPUIdleRecords = append(firstFitRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		firstFitRecorder.MemoryIdleRecords = append(firstFitRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		firstFitRecorder.StorageIdleRecords = append(firstFitRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		firstFitRecorder.BwIdleRecords = append(firstFitRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		firstFitRecorder.AcceptedPriorityRateRecords = append(firstFitRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-		firstFitRecorder.AcceptedSvcPriRateRecords = append(firstFitRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-		firstFitRecorder.AcceptedTaskPriRateRecords = append(firstFitRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		firstFitRecorder.AllAppComplTimePerPri = append(firstFitRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-	}
-	// For firstFit, record the service suspension time and task completion time
-	firstFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
-
-	// Random Fit
-	currentClouds = model.CloudsCopy(clouds)
-	totalApps = []model.Application{}
-	currentSolution = model.Solution{}
-
-	currentTime = 0 * time.Second
-
-	for i := 0; i < len(apps); i++ {
-		currentTime += appArrivalTimeIntervals[i]
-		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
-
-		// the ith applications group request comes
-		totalApps = model.CombApps(totalApps, apps[i])
-		thisAppGroup := apps[i]
-
-		rf := algorithms.NewRandomFit(currentClouds, thisAppGroup)
-		solution, err := rf.Schedule(currentClouds, thisAppGroup)
-		if err != nil {
-			log.Printf("Error, app %d. Error message: %s", i, err.Error())
-		}
-
-		// get apps with all time related attributes
-		tmpClouds4Time := model.CloudsCopy(currentClouds)
-		tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
-		tmpSolution4Time := model.SolutionCopy(solution)
-		tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
-		timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
-
-		for j := 0; j < len(timeApps); j++ {
-			if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
-				continue
-			}
-			if timeApps[j].IsTask { // set final completion time for tasks
-				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
-			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
-			}
-		}
-
-		// if last group does not finish when this group generate, this group need to wait for last one
-		if i != 0 {
+			// record TotalTaskComplTime of clouds
+			var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
+			var longestTime float64 = 0
 			for j := 0; j < len(tmpClouds4Time); j++ {
-				if wait := randomFitRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
-					tmpClouds4Time[j].TotalTaskComplTime += wait
-					for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
-						if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
-						} else {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+				thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
+				if thisTimeRecord[j] > longestTime {
+					longestTime = thisTimeRecord[j]
+				}
+			}
+			firstFitRecorder.CloudsWithTime = append(firstFitRecorder.CloudsWithTime, thisTimeRecord)
+			firstFitRecorder.AllAppComplTime = append(firstFitRecorder.AllAppComplTime, longestTime)
+			log.Println("thisTimeRecord", thisTimeRecord)
+			log.Println("firstFitRecorder.AllAppComplTime", firstFitRecorder.AllAppComplTime)
+
+			// add the solution of this app to current solution
+			currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
+
+			// deploy this app in current clouds (subtract the resources)
+			//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
+			currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+
+			// RunningApps should be empty before the scheduling of the next round
+			for j := 0; j < len(currentClouds); j++ {
+				currentClouds[j].RunningApps = []model.Application{}
+			}
+
+			// evaluate current solution, current cloud, current apps
+			firstFitRecorder.CPUIdleRecords = append(firstFitRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			firstFitRecorder.MemoryIdleRecords = append(firstFitRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			firstFitRecorder.StorageIdleRecords = append(firstFitRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			firstFitRecorder.BwIdleRecords = append(firstFitRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			firstFitRecorder.AcceptedPriorityRateRecords = append(firstFitRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+			firstFitRecorder.AcceptedSvcPriRateRecords = append(firstFitRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+			firstFitRecorder.AcceptedTaskPriRateRecords = append(firstFitRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			firstFitRecorder.AllAppComplTimePerPri = append(firstFitRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+		}
+		// For firstFit, record the service suspension time and task completion time
+		firstFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
+
+		// Random Fit
+		currentClouds = model.CloudsCopy(clouds)
+		totalApps = []model.Application{}
+		currentSolution = model.Solution{}
+
+		currentTime = 0 * time.Second
+
+		for i := 0; i < len(apps); i++ {
+			currentTime += appArrivalTimeIntervals[i]
+			log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
+
+			// the ith applications group request comes
+			totalApps = model.CombApps(totalApps, apps[i])
+			thisAppGroup := apps[i]
+
+			rf := algorithms.NewRandomFit(currentClouds, thisAppGroup)
+			solution, err := rf.Schedule(currentClouds, thisAppGroup)
+			if err != nil {
+				log.Printf("Error, app %d. Error message: %s", i, err.Error())
+			}
+
+			// get apps with all time related attributes
+			tmpClouds4Time := model.CloudsCopy(currentClouds)
+			tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
+			tmpSolution4Time := model.SolutionCopy(solution)
+			tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
+			timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
+
+			for j := 0; j < len(timeApps); j++ {
+				if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
+					continue
+				}
+				if timeApps[j].IsTask { // set final completion time for tasks
+					totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
+				} else { // set suspension time for services
+					totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
+				}
+			}
+
+			// if last group does not finish when this group generate, this group need to wait for last one
+			if i != 0 {
+				for j := 0; j < len(tmpClouds4Time); j++ {
+					if wait := randomFitRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
+						tmpClouds4Time[j].TotalTaskComplTime += wait
+						for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
+							if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
+							} else {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+							}
 						}
 					}
 				}
 			}
-		}
 
-		// record TotalTaskComplTime of clouds
-		var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
-		var longestTime float64 = 0
-		for j := 0; j < len(tmpClouds4Time); j++ {
-			thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
-			if thisTimeRecord[j] > longestTime {
-				longestTime = thisTimeRecord[j]
-			}
-		}
-		randomFitRecorder.CloudsWithTime = append(randomFitRecorder.CloudsWithTime, thisTimeRecord)
-		randomFitRecorder.AllAppComplTime = append(randomFitRecorder.AllAppComplTime, longestTime)
-		log.Println("thisTimeRecord", thisTimeRecord)
-		log.Println("randomFitRecorder.AllAppComplTime", randomFitRecorder.AllAppComplTime)
-
-		// add the solution of this app to current solution
-		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
-
-		// deploy this app in current clouds (subtract the resources)
-		//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
-		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
-
-		// RunningApps should be empty before the scheduling of the next round
-		for j := 0; j < len(currentClouds); j++ {
-			currentClouds[j].RunningApps = []model.Application{}
-		}
-
-		// evaluate current solution, current cloud, current apps
-		randomFitRecorder.CPUIdleRecords = append(randomFitRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		randomFitRecorder.MemoryIdleRecords = append(randomFitRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		randomFitRecorder.StorageIdleRecords = append(randomFitRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		randomFitRecorder.BwIdleRecords = append(randomFitRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		randomFitRecorder.AcceptedPriorityRateRecords = append(randomFitRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-		randomFitRecorder.AcceptedSvcPriRateRecords = append(randomFitRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-		randomFitRecorder.AcceptedTaskPriRateRecords = append(randomFitRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		randomFitRecorder.AllAppComplTimePerPri = append(randomFitRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-	}
-	// For randomFit, record the service suspension time and task completion time
-	randomFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
-
-	// NSGA-II
-	currentClouds = model.CloudsCopy(clouds)
-	totalApps = []model.Application{}
-	currentSolution = model.Solution{}
-
-	currentTime = 0 * time.Second
-
-	for i := 0; i < len(apps); i++ {
-		currentTime += appArrivalTimeIntervals[i]
-		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
-
-		// the ith applications group request comes
-		totalApps = model.CombApps(totalApps, apps[i])
-		thisAppGroup := apps[i]
-
-		nsga := algorithms.NewNSGAII(200, 5000, 1, 0.25, 250, currentClouds, thisAppGroup)
-		solution, err := nsga.Schedule(currentClouds, thisAppGroup)
-		if err != nil {
-			log.Printf("Error, app %d. Error message: %s", i, err.Error())
-		}
-
-		// get apps with all time related attributes
-		tmpClouds4Time := model.CloudsCopy(currentClouds)
-		tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
-		tmpSolution4Time := model.SolutionCopy(solution)
-		tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
-
-		timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
-
-		for j := 0; j < len(timeApps); j++ {
-			if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
-				continue
-			}
-			if timeApps[j].IsTask { // set final completion time for tasks
-				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
-			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
-			}
-		}
-
-		// if last group does not finish when this group generate, this group need to wait for last one
-		if i != 0 {
+			// record TotalTaskComplTime of clouds
+			var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
+			var longestTime float64 = 0
 			for j := 0; j < len(tmpClouds4Time); j++ {
-				if wait := NSGAIIRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
-					tmpClouds4Time[j].TotalTaskComplTime += wait
-					for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
-						if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
-						} else {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+				thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
+				if thisTimeRecord[j] > longestTime {
+					longestTime = thisTimeRecord[j]
+				}
+			}
+			randomFitRecorder.CloudsWithTime = append(randomFitRecorder.CloudsWithTime, thisTimeRecord)
+			randomFitRecorder.AllAppComplTime = append(randomFitRecorder.AllAppComplTime, longestTime)
+			log.Println("thisTimeRecord", thisTimeRecord)
+			log.Println("randomFitRecorder.AllAppComplTime", randomFitRecorder.AllAppComplTime)
+
+			// add the solution of this app to current solution
+			currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
+
+			// deploy this app in current clouds (subtract the resources)
+			//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
+			currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+
+			// RunningApps should be empty before the scheduling of the next round
+			for j := 0; j < len(currentClouds); j++ {
+				currentClouds[j].RunningApps = []model.Application{}
+			}
+
+			// evaluate current solution, current cloud, current apps
+			randomFitRecorder.CPUIdleRecords = append(randomFitRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			randomFitRecorder.MemoryIdleRecords = append(randomFitRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			randomFitRecorder.StorageIdleRecords = append(randomFitRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			randomFitRecorder.BwIdleRecords = append(randomFitRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			randomFitRecorder.AcceptedPriorityRateRecords = append(randomFitRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+			randomFitRecorder.AcceptedSvcPriRateRecords = append(randomFitRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+			randomFitRecorder.AcceptedTaskPriRateRecords = append(randomFitRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			randomFitRecorder.AllAppComplTimePerPri = append(randomFitRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+		}
+		// For randomFit, record the service suspension time and task completion time
+		randomFitRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
+
+		// NSGA-II
+		currentClouds = model.CloudsCopy(clouds)
+		totalApps = []model.Application{}
+		currentSolution = model.Solution{}
+
+		currentTime = 0 * time.Second
+
+		for i := 0; i < len(apps); i++ {
+			currentTime += appArrivalTimeIntervals[i]
+			log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
+
+			// the ith applications group request comes
+			totalApps = model.CombApps(totalApps, apps[i])
+			thisAppGroup := apps[i]
+
+			nsga := algorithms.NewNSGAII(200, 5000, 1, 0.25, 250, currentClouds, thisAppGroup)
+			solution, err := nsga.Schedule(currentClouds, thisAppGroup)
+			if err != nil {
+				log.Printf("Error, app %d. Error message: %s", i, err.Error())
+			}
+
+			// get apps with all time related attributes
+			tmpClouds4Time := model.CloudsCopy(currentClouds)
+			tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
+			tmpSolution4Time := model.SolutionCopy(solution)
+			tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
+
+			timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
+
+			for j := 0; j < len(timeApps); j++ {
+				if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
+					continue
+				}
+				if timeApps[j].IsTask { // set final completion time for tasks
+					totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
+				} else { // set suspension time for services
+					totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
+				}
+			}
+
+			// if last group does not finish when this group generate, this group need to wait for last one
+			if i != 0 {
+				for j := 0; j < len(tmpClouds4Time); j++ {
+					if wait := NSGAIIRecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
+						tmpClouds4Time[j].TotalTaskComplTime += wait
+						for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
+							if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
+							} else {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+							}
 						}
 					}
 				}
 			}
-		}
 
-		// record TotalTaskComplTime of clouds
-		var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
-		var longestTime float64 = 0
-		for j := 0; j < len(tmpClouds4Time); j++ {
-			thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
-			if thisTimeRecord[j] > longestTime {
-				longestTime = thisTimeRecord[j]
-			}
-		}
-		NSGAIIRecorder.CloudsWithTime = append(NSGAIIRecorder.CloudsWithTime, thisTimeRecord)
-		NSGAIIRecorder.AllAppComplTime = append(NSGAIIRecorder.AllAppComplTime, longestTime)
-		log.Println("thisTimeRecord", thisTimeRecord)
-		log.Println("NSGAIIRecorder.AllAppComplTime", NSGAIIRecorder.AllAppComplTime)
-
-		// add the solution of this app to current solution
-		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
-
-		// deploy this app in current clouds (subtract the resources)
-		//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
-		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
-
-		// RunningApps should be empty before the scheduling of the next round
-		for j := 0; j < len(currentClouds); j++ {
-			currentClouds[j].RunningApps = []model.Application{}
-		}
-
-		// evaluate current solution, current cloud, current apps
-		NSGAIIRecorder.CPUIdleRecords = append(NSGAIIRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		NSGAIIRecorder.MemoryIdleRecords = append(NSGAIIRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		NSGAIIRecorder.StorageIdleRecords = append(NSGAIIRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		NSGAIIRecorder.BwIdleRecords = append(NSGAIIRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		NSGAIIRecorder.AcceptedPriorityRateRecords = append(NSGAIIRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-		NSGAIIRecorder.AcceptedSvcPriRateRecords = append(NSGAIIRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-		NSGAIIRecorder.AcceptedTaskPriRateRecords = append(NSGAIIRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		NSGAIIRecorder.AllAppComplTimePerPri = append(NSGAIIRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-	}
-	// For NSGA-II, record the service suspension time and task completion time
-	NSGAIIRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
-
-	// HAGA
-	currentClouds = model.CloudsCopy(clouds)
-	totalApps = []model.Application{}
-	currentSolution = model.Solution{}
-
-	currentTime = 0 * time.Second
-
-	for i := 0; i < len(apps); i++ {
-		currentTime += appArrivalTimeIntervals[i]
-		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
-
-		// the ith applications group request comes
-		totalApps = model.CombApps(totalApps, apps[i])
-		thisAppGroup := apps[i]
-
-		haga := algorithms.NewHAGA(10, 0.6, 200, 5000, 0.6, 0.7, 250, currentClouds, thisAppGroup)
-		solution, err := haga.Schedule(currentClouds, thisAppGroup)
-		if err != nil {
-			log.Printf("Error, app %d. Error message: %s", i, err.Error())
-		}
-
-		// get apps with all time related attributes
-		tmpClouds4Time := model.CloudsCopy(currentClouds)
-		tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
-		tmpSolution4Time := model.SolutionCopy(solution)
-		tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
-
-		timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
-
-		for j := 0; j < len(timeApps); j++ {
-			if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
-				continue
-			}
-			if timeApps[j].IsTask { // set final completion time for tasks
-				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
-			} else { // set suspension time for services
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
-			}
-		}
-
-		// if last group does not finish when this group generate, this group need to wait for last one
-		if i != 0 {
+			// record TotalTaskComplTime of clouds
+			var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
+			var longestTime float64 = 0
 			for j := 0; j < len(tmpClouds4Time); j++ {
-				if wait := HAGARecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
-					tmpClouds4Time[j].TotalTaskComplTime += wait
-					for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
-						if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
-						} else {
-							totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+				thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
+				if thisTimeRecord[j] > longestTime {
+					longestTime = thisTimeRecord[j]
+				}
+			}
+			NSGAIIRecorder.CloudsWithTime = append(NSGAIIRecorder.CloudsWithTime, thisTimeRecord)
+			NSGAIIRecorder.AllAppComplTime = append(NSGAIIRecorder.AllAppComplTime, longestTime)
+			log.Println("thisTimeRecord", thisTimeRecord)
+			log.Println("NSGAIIRecorder.AllAppComplTime", NSGAIIRecorder.AllAppComplTime)
+
+			// add the solution of this app to current solution
+			currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
+
+			// deploy this app in current clouds (subtract the resources)
+			//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
+			currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+
+			// RunningApps should be empty before the scheduling of the next round
+			for j := 0; j < len(currentClouds); j++ {
+				currentClouds[j].RunningApps = []model.Application{}
+			}
+
+			// evaluate current solution, current cloud, current apps
+			NSGAIIRecorder.CPUIdleRecords = append(NSGAIIRecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			NSGAIIRecorder.MemoryIdleRecords = append(NSGAIIRecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			NSGAIIRecorder.StorageIdleRecords = append(NSGAIIRecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			NSGAIIRecorder.BwIdleRecords = append(NSGAIIRecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			NSGAIIRecorder.AcceptedPriorityRateRecords = append(NSGAIIRecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+			NSGAIIRecorder.AcceptedSvcPriRateRecords = append(NSGAIIRecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+			NSGAIIRecorder.AcceptedTaskPriRateRecords = append(NSGAIIRecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			NSGAIIRecorder.AllAppComplTimePerPri = append(NSGAIIRecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+		}
+		// For NSGA-II, record the service suspension time and task completion time
+		NSGAIIRecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
+
+		// HAGA
+		currentClouds = model.CloudsCopy(clouds)
+		totalApps = []model.Application{}
+		currentSolution = model.Solution{}
+
+		currentTime = 0 * time.Second
+
+		for i := 0; i < len(apps); i++ {
+			currentTime += appArrivalTimeIntervals[i]
+			log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
+
+			// the ith applications group request comes
+			totalApps = model.CombApps(totalApps, apps[i])
+			thisAppGroup := apps[i]
+
+			haga := algorithms.NewHAGA(10, 0.6, 200, 5000, 0.6, 0.7, 250, currentClouds, thisAppGroup)
+			solution, err := haga.Schedule(currentClouds, thisAppGroup)
+			if err != nil {
+				log.Printf("Error, app %d. Error message: %s", i, err.Error())
+			}
+
+			// get apps with all time related attributes
+			tmpClouds4Time := model.CloudsCopy(currentClouds)
+			tmpAppsToDeploy4Time := model.AppsCopy(thisAppGroup)
+			tmpSolution4Time := model.SolutionCopy(solution)
+			tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
+
+			timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
+
+			for j := 0; j < len(timeApps); j++ {
+				if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
+					continue
+				}
+				if timeApps[j].IsTask { // set final completion time for tasks
+					totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
+				} else { // set suspension time for services
+					totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
+				}
+			}
+
+			// if last group does not finish when this group generate, this group need to wait for last one
+			if i != 0 {
+				for j := 0; j < len(tmpClouds4Time); j++ {
+					if wait := HAGARecorder.CloudsWithTime[i-1][j] - float64(currentTime)/float64(time.Second); wait > 0 {
+						tmpClouds4Time[j].TotalTaskComplTime += wait
+						for k := 0; k < len(tmpClouds4Time[j].RunningApps); k++ {
+							if totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].IsTask {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].TaskFinalComplTime += wait
+							} else {
+								totalApps[tmpClouds4Time[j].RunningApps[k].OriIdx].SvcSuspensionTime += wait
+							}
 						}
 					}
 				}
 			}
-		}
 
-		// record TotalTaskComplTime of clouds
-		var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
-		var longestTime float64 = 0
-		for j := 0; j < len(tmpClouds4Time); j++ {
-			thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
-			if thisTimeRecord[j] > longestTime {
-				longestTime = thisTimeRecord[j]
+			// record TotalTaskComplTime of clouds
+			var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
+			var longestTime float64 = 0
+			for j := 0; j < len(tmpClouds4Time); j++ {
+				thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
+				if thisTimeRecord[j] > longestTime {
+					longestTime = thisTimeRecord[j]
+				}
 			}
+			HAGARecorder.CloudsWithTime = append(HAGARecorder.CloudsWithTime, thisTimeRecord)
+			HAGARecorder.AllAppComplTime = append(HAGARecorder.AllAppComplTime, longestTime)
+			log.Println("thisTimeRecord", thisTimeRecord)
+			log.Println("HAGARecorder.AllAppComplTime", HAGARecorder.AllAppComplTime)
+
+			// add the solution of this app to current solution
+			currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
+
+			// deploy this app in current clouds (subtract the resources)
+			//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
+			currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+
+			// RunningApps should be empty before the scheduling of the next round
+			for j := 0; j < len(currentClouds); j++ {
+				currentClouds[j].RunningApps = []model.Application{}
+			}
+
+			// evaluate current solution, current cloud, current apps
+			HAGARecorder.CPUIdleRecords = append(HAGARecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			HAGARecorder.MemoryIdleRecords = append(HAGARecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			HAGARecorder.StorageIdleRecords = append(HAGARecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+			HAGARecorder.BwIdleRecords = append(HAGARecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			HAGARecorder.AcceptedPriorityRateRecords = append(HAGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+			HAGARecorder.AcceptedSvcPriRateRecords = append(HAGARecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+			HAGARecorder.AcceptedTaskPriRateRecords = append(HAGARecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
+
+			HAGARecorder.AllAppComplTimePerPri = append(HAGARecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
 		}
-		HAGARecorder.CloudsWithTime = append(HAGARecorder.CloudsWithTime, thisTimeRecord)
-		HAGARecorder.AllAppComplTime = append(HAGARecorder.AllAppComplTime, longestTime)
-		log.Println("thisTimeRecord", thisTimeRecord)
-		log.Println("HAGARecorder.AllAppComplTime", HAGARecorder.AllAppComplTime)
+		// For HAGA, record the service suspension time and task completion time
+		HAGARecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
 
-		// add the solution of this app to current solution
-		currentSolution.SchedulingResult = append(currentSolution.SchedulingResult, solution.SchedulingResult...)
+		// MCASGA
+		currentClouds = model.CloudsCopy(clouds)
+		totalApps = []model.Application{}
+		currentSolution = model.Solution{}
 
-		// deploy this app in current clouds (subtract the resources)
-		//currentClouds = algorithms.TrulyDeploy(clouds, totalApps, currentSolution)
-		currentClouds = algorithms.TrulyDeploy(currentClouds, thisAppGroup, solution)
+		totalSolution = model.Solution{}
 
-		// RunningApps should be empty before the scheduling of the next round
-		for j := 0; j < len(currentClouds); j++ {
-			currentClouds[j].RunningApps = []model.Application{}
+		lastApps = []model.Application{}
+		lastSolution = model.Solution{}
+
+		currentTime = 0 * time.Second
+
+		for i := 0; i < len(apps); i++ {
+			currentTime += appArrivalTimeIntervals[i]
+			log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
+
+			var appsToDeploy []model.Application
+
+			// the ith applications group request comes
+			appsToDeploy = model.CombApps(appsToDeploy, apps[i]) // this group of apps + remaining apps
+
+			if len(lastApps) != 0 { // not the first group
+				tmpClouds := model.CloudsCopy(clouds)
+				tmpApps := model.AppsCopy(lastApps)
+				tmpSolution := model.SolutionCopy(lastSolution)
+
+				timeClouds := algorithms.SimulateDeploy(tmpClouds, tmpApps, tmpSolution)
+				algorithms.CalcStartComplTime(timeClouds, tmpApps, tmpSolution.SchedulingResult)
+
+				//for j := 0; j < len(timeClouds); j++ {
+				//	fmt.Println(i, timeClouds[j].TotalTaskComplTime, len(timeClouds[j].RunningApps))
+				//}
+
+				resClouds := model.CloudsCopy(currentClouds)
+
+				var timeIntervalSec float64 = float64(appArrivalTimeIntervals[i]) / float64(time.Second) // unit second
+
+				// here:
+				// resClouds have the information: 1. resource usage; 2. update time of clouds in last round 3. deployed apps
+				// timeClouds have the information: 1. execution time; 2. deployed apps
+				// I need to use them to calculate: at this time (this round), what applications are still running on each cloud, and how many cycles of them still need to be executed
+
+				remainingApps := algorithms.CalcRemainingApps(resClouds, timeClouds, timeIntervalSec)
+				appsToDeploy = model.CombApps(appsToDeploy, remainingApps) // this group of apps + remaining apps
+
+			}
+
+			totalApps = model.CombApps(totalApps, apps[i])
+			lastApps = model.AppsCopy(appsToDeploy)
+
+			//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, totalApps)
+			ga := algorithms.NewGenetic(200, 5000, 0.4, 0.003, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, appsToDeploy)
+			solution, err := ga.Schedule(clouds, appsToDeploy)
+			if err != nil {
+				log.Printf("Error, app %d. Error message: %s", i, err.Error())
+			}
+
+			lastSolution = model.SolutionCopy(solution)
+
+			// get apps with all time related attributes
+			tmpClouds4Time := model.CloudsCopy(clouds)
+			tmpAppsToDeploy4Time := model.AppsCopy(appsToDeploy)
+			tmpSolution4Time := model.SolutionCopy(solution)
+			tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
+			timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
+
+			for j := 0; j < len(timeApps); j++ {
+				if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
+					continue
+				}
+				if timeApps[j].IsTask { // set final completion time for tasks
+					totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
+				} else { // set suspension time for services
+					//totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
+					totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
+				}
+			}
+
+			// record TotalTaskComplTime of clouds
+			var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
+			var longestTime float64 = 0
+			for j := 0; j < len(tmpClouds4Time); j++ {
+				thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
+				if thisTimeRecord[j] > longestTime {
+					longestTime = thisTimeRecord[j]
+				}
+			}
+			MCASGARecorder.CloudsWithTime = append(MCASGARecorder.CloudsWithTime, thisTimeRecord)
+			MCASGARecorder.AllAppComplTime = append(MCASGARecorder.AllAppComplTime, longestTime)
+			log.Println("thisTimeRecord", thisTimeRecord)
+			log.Println("MCASGARecorder.AllAppComplTime", MCASGARecorder.AllAppComplTime)
+
+			// deploy this app in current clouds (subtract the resources)
+			currentClouds = algorithms.TrulyDeploy(clouds, appsToDeploy, solution)
+			for j := 0; j < len(currentClouds); j++ {
+				currentClouds[j].RefreshTime(appArrivalTimeIntervals[i])
+			}
+
+			// add the solution of this app to current solution
+			currentSolution = model.SolutionCopy(solution)
+			tmpSolution := model.SolutionCopy(solution)
+			tmpSolution.SchedulingResult = tmpSolution.SchedulingResult[:len(apps[i])]
+			totalSolution.SchedulingResult = append(totalSolution.SchedulingResult, tmpSolution.SchedulingResult...)
+			//log.Println("i:", i, "------------------")
+			//log.Println("currentSolution:", currentSolution)
+			//log.Println("len(apps[i]):", len(apps[i]), "tmpSolution:", tmpSolution)
+			//log.Println("totalSolution", totalSolution)
+
+			// evaluate current solution, current cloud, current apps
+			MCASGARecorder.CPUIdleRecords = append(MCASGARecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
+			MCASGARecorder.MemoryIdleRecords = append(MCASGARecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
+			MCASGARecorder.StorageIdleRecords = append(MCASGARecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
+			MCASGARecorder.BwIdleRecords = append(MCASGARecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
+
+			MCASGARecorder.AcceptedPriorityRateRecords = append(MCASGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, totalSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, totalSolution.SchedulingResult)))
+			MCASGARecorder.AcceptedSvcPriRateRecords = append(MCASGARecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, totalSolution.SchedulingResult))
+			MCASGARecorder.AcceptedTaskPriRateRecords = append(MCASGARecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, totalSolution.SchedulingResult))
+
+			MCASGARecorder.AllAppComplTimePerPri = append(MCASGARecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, totalSolution.SchedulingResult)))
 		}
+		// For MCASGA, record the service suspension time and task completion time
+		MCASGARecorder.setSvcSusTaskComplTime(clouds, totalApps, totalSolution)
+		// after the service suspension time and task completion time in 4 recorders are set, we handle the rejected apps
+		setRejectedSvcTask(firstFitRecorder, randomFitRecorder, NSGAIIRecorder, HAGARecorder, MCASGARecorder)
 
-		// evaluate current solution, current cloud, current apps
-		HAGARecorder.CPUIdleRecords = append(HAGARecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		HAGARecorder.MemoryIdleRecords = append(HAGARecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		HAGARecorder.StorageIdleRecords = append(HAGARecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-		HAGARecorder.BwIdleRecords = append(HAGARecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		HAGARecorder.AcceptedPriorityRateRecords = append(HAGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, currentSolution.SchedulingResult)))
-		HAGARecorder.AcceptedSvcPriRateRecords = append(HAGARecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-		HAGARecorder.AcceptedTaskPriRateRecords = append(HAGARecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, currentSolution.SchedulingResult))
-
-		HAGARecorder.AllAppComplTimePerPri = append(HAGARecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, currentSolution.SchedulingResult)))
+		log.Println("MCASGA solution:", totalSolution.SchedulingResult)
 	}
-	// For HAGA, record the service suspension time and task completion time
-	HAGARecorder.setSvcSusTaskComplTime(clouds, totalApps, currentSolution)
 
-	// MCASGA
-	currentClouds = model.CloudsCopy(clouds)
-	totalApps = []model.Application{}
-	currentSolution = model.Solution{}
-
-	totalSolution = model.Solution{}
-
-	lastApps = []model.Application{}
-	lastSolution = model.Solution{}
-
-	currentTime = 0 * time.Second
-
-	for i := 0; i < len(apps); i++ {
-		currentTime += appArrivalTimeIntervals[i]
-		log.Println("group", i, "currentTime", float64(currentTime)/float64(time.Second))
-
-		var appsToDeploy []model.Application
-
-		// the ith applications group request comes
-		appsToDeploy = model.CombApps(appsToDeploy, apps[i]) // this group of apps + remaining apps
-
-		if len(lastApps) != 0 { // not the first group
-			tmpClouds := model.CloudsCopy(clouds)
-			tmpApps := model.AppsCopy(lastApps)
-			tmpSolution := model.SolutionCopy(lastSolution)
-
-			timeClouds := algorithms.SimulateDeploy(tmpClouds, tmpApps, tmpSolution)
-			algorithms.CalcStartComplTime(timeClouds, tmpApps, tmpSolution.SchedulingResult)
-
-			//for j := 0; j < len(timeClouds); j++ {
-			//	fmt.Println(i, timeClouds[j].TotalTaskComplTime, len(timeClouds[j].RunningApps))
-			//}
-
-			resClouds := model.CloudsCopy(currentClouds)
-
-			var timeIntervalSec float64 = float64(appArrivalTimeIntervals[i]) / float64(time.Second) // unit second
-
-			// here:
-			// resClouds have the information: 1. resource usage; 2. update time of clouds in last round 3. deployed apps
-			// timeClouds have the information: 1. execution time; 2. deployed apps
-			// I need to use them to calculate: at this time (this round), what applications are still running on each cloud, and how many cycles of them still need to be executed
-
-			remainingApps := algorithms.CalcRemainingApps(resClouds, timeClouds, timeIntervalSec)
-			appsToDeploy = model.CombApps(appsToDeploy, remainingApps) // this group of apps + remaining apps
-
-		}
-
-		totalApps = model.CombApps(totalApps, apps[i])
-		lastApps = model.AppsCopy(appsToDeploy)
-
-		//ga := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 2000, algorithms.InitializeUndeployedChromosome, clouds, totalApps)
-		ga := algorithms.NewGenetic(200, 5000, 0.4, 0.003, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, appsToDeploy)
-		solution, err := ga.Schedule(clouds, appsToDeploy)
-		if err != nil {
-			log.Printf("Error, app %d. Error message: %s", i, err.Error())
-		}
-
-		lastSolution = model.SolutionCopy(solution)
-
-		// get apps with all time related attributes
-		tmpClouds4Time := model.CloudsCopy(clouds)
-		tmpAppsToDeploy4Time := model.AppsCopy(appsToDeploy)
-		tmpSolution4Time := model.SolutionCopy(solution)
-		tmpClouds4Time = algorithms.SimulateDeploy(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time)
-		timeApps := algorithms.CalcStartComplTime(tmpClouds4Time, tmpAppsToDeploy4Time, tmpSolution4Time.SchedulingResult)
-
-		for j := 0; j < len(timeApps); j++ {
-			if tmpSolution4Time.SchedulingResult[j] == len(tmpClouds4Time) { // only record the time of accepted apps
-				continue
-			}
-			if timeApps[j].IsTask { // set final completion time for tasks
-				totalApps[timeApps[j].OriIdx].TaskFinalComplTime = timeApps[j].TaskCompletionTime + float64(currentTime)/float64(time.Second)
-			} else { // set suspension time for services
-				//totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StartTime
-				totalApps[timeApps[j].OriIdx].SvcSuspensionTime += timeApps[j].StableTime
-			}
-		}
-
-		// record TotalTaskComplTime of clouds
-		var thisTimeRecord []float64 = make([]float64, len(tmpClouds4Time))
-		var longestTime float64 = 0
-		for j := 0; j < len(tmpClouds4Time); j++ {
-			thisTimeRecord[j] = tmpClouds4Time[j].TotalTaskComplTime + float64(currentTime)/float64(time.Second)
-			if thisTimeRecord[j] > longestTime {
-				longestTime = thisTimeRecord[j]
-			}
-		}
-		MCASGARecorder.CloudsWithTime = append(MCASGARecorder.CloudsWithTime, thisTimeRecord)
-		MCASGARecorder.AllAppComplTime = append(MCASGARecorder.AllAppComplTime, longestTime)
-		log.Println("thisTimeRecord", thisTimeRecord)
-		log.Println("MCASGARecorder.AllAppComplTime", MCASGARecorder.AllAppComplTime)
-
-		// deploy this app in current clouds (subtract the resources)
-		currentClouds = algorithms.TrulyDeploy(clouds, appsToDeploy, solution)
-		for j := 0; j < len(currentClouds); j++ {
-			currentClouds[j].RefreshTime(appArrivalTimeIntervals[i])
-		}
-
-		// add the solution of this app to current solution
-		currentSolution = model.SolutionCopy(solution)
-		tmpSolution := model.SolutionCopy(solution)
-		tmpSolution.SchedulingResult = tmpSolution.SchedulingResult[:len(apps[i])]
-		totalSolution.SchedulingResult = append(totalSolution.SchedulingResult, tmpSolution.SchedulingResult...)
-		//log.Println("i:", i, "------------------")
-		//log.Println("currentSolution:", currentSolution)
-		//log.Println("len(apps[i]):", len(apps[i]), "tmpSolution:", tmpSolution)
-		//log.Println("totalSolution", totalSolution)
-
-		// evaluate current solution, current cloud, current apps
-		MCASGARecorder.CPUIdleRecords = append(MCASGARecorder.CPUIdleRecords, algorithms.CPUIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
-		MCASGARecorder.MemoryIdleRecords = append(MCASGARecorder.MemoryIdleRecords, algorithms.MemoryIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
-		MCASGARecorder.StorageIdleRecords = append(MCASGARecorder.StorageIdleRecords, algorithms.StorageIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
-		MCASGARecorder.BwIdleRecords = append(MCASGARecorder.BwIdleRecords, algorithms.BwIdleRate(clouds, appsToDeploy, currentSolution.SchedulingResult))
-
-		MCASGARecorder.AcceptedPriorityRateRecords = append(MCASGARecorder.AcceptedPriorityRateRecords, float64(algorithms.AcceptedPriority(clouds, totalApps, totalSolution.SchedulingResult))/float64(algorithms.TotalPriority(clouds, totalApps, totalSolution.SchedulingResult)))
-		MCASGARecorder.AcceptedSvcPriRateRecords = append(MCASGARecorder.AcceptedSvcPriRateRecords, algorithms.AcceptedSvcPriRate(clouds, totalApps, totalSolution.SchedulingResult))
-		MCASGARecorder.AcceptedTaskPriRateRecords = append(MCASGARecorder.AcceptedTaskPriRateRecords, algorithms.AcceptedTaskPriRate(clouds, totalApps, totalSolution.SchedulingResult))
-
-		MCASGARecorder.AllAppComplTimePerPri = append(MCASGARecorder.AllAppComplTimePerPri, longestTime/float64(algorithms.AcceptedPriority(clouds, totalApps, totalSolution.SchedulingResult)))
+	// repeat experiments
+	for curRepeatCount := 0; curRepeatCount < repeatCount; curRepeatCount++ {
+		log.Println("repeat: ", curRepeatCount)
+		oneRepeat(&(firstFitRecorders[curRepeatCount]), &(randomFitRecorders[curRepeatCount]), &(NSGAIIRecorders[curRepeatCount]), &(HAGARecorders[curRepeatCount]), &(MCASGARecorders[curRepeatCount]))
 	}
-	// For MCASGA, record the service suspension time and task completion time
-	MCASGARecorder.setSvcSusTaskComplTime(clouds, totalApps, totalSolution)
-	// after the service suspension time and task completion time in 4 recorders are set, we handle the rejected apps
-	setRejectedSvcTask(&firstFitRecorder, &randomFitRecorder, &NSGAIIRecorder, &HAGARecorder, &MCASGARecorder)
 
-	log.Println("MCASGA solution:", totalSolution.SchedulingResult)
+	// calculate average value
+	var calcAver func(*ContinuousHelper, []ContinuousHelper) = func(averageRecorder *ContinuousHelper, recorders []ContinuousHelper) {
+		//CPUIdleRecords
+		for i := 0; i < len(recorders[0].CPUIdleRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].CPUIdleRecords[i]
+				num++
+			}
+			averageRecorder.CPUIdleRecords = append(averageRecorder.CPUIdleRecords, sum/float64(num))
+		}
+		//MemoryIdleRecords
+		for i := 0; i < len(recorders[0].MemoryIdleRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].MemoryIdleRecords[i]
+				num++
+			}
+			averageRecorder.MemoryIdleRecords = append(averageRecorder.MemoryIdleRecords, sum/float64(num))
+		}
+		//StorageIdleRecords
+		for i := 0; i < len(recorders[0].StorageIdleRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].StorageIdleRecords[i]
+				num++
+			}
+			averageRecorder.StorageIdleRecords = append(averageRecorder.StorageIdleRecords, sum/float64(num))
+		}
+		//BwIdleRecords
+		for i := 0; i < len(recorders[0].BwIdleRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].BwIdleRecords[i]
+				num++
+			}
+			averageRecorder.BwIdleRecords = append(averageRecorder.BwIdleRecords, sum/float64(num))
+		}
+		//AcceptedPriorityRateRecords
+		for i := 0; i < len(recorders[0].AcceptedPriorityRateRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].AcceptedPriorityRateRecords[i]
+				num++
+			}
+			averageRecorder.AcceptedPriorityRateRecords = append(averageRecorder.AcceptedPriorityRateRecords, sum/float64(num))
+		}
+		//AcceptedSvcPriRateRecords
+		for i := 0; i < len(recorders[0].AcceptedSvcPriRateRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].AcceptedSvcPriRateRecords[i]
+				num++
+			}
+			averageRecorder.AcceptedSvcPriRateRecords = append(averageRecorder.AcceptedSvcPriRateRecords, sum/float64(num))
+		}
+		//AcceptedTaskPriRateRecords
+		for i := 0; i < len(recorders[0].AcceptedTaskPriRateRecords); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].AcceptedTaskPriRateRecords[i]
+				num++
+			}
+			averageRecorder.AcceptedTaskPriRateRecords = append(averageRecorder.AcceptedTaskPriRateRecords, sum/float64(num))
+		}
+
+		//AllAppComplTime
+		for i := 0; i < len(recorders[0].AllAppComplTime); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].AllAppComplTime[i]
+				num++
+			}
+			averageRecorder.AllAppComplTime = append(averageRecorder.AllAppComplTime, sum/float64(num))
+		}
+		//AllAppComplTimePerPri
+		for i := 0; i < len(recorders[0].AllAppComplTimePerPri); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].AllAppComplTimePerPri[i]
+				num++
+			}
+			averageRecorder.AllAppComplTimePerPri = append(averageRecorder.AllAppComplTimePerPri, sum/float64(num))
+		}
+		//SvcSusTime
+		for i := 0; i < len(recorders[0].SvcSusTime); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].SvcSusTime[i]
+				num++
+			}
+			averageRecorder.SvcSusTime = append(averageRecorder.SvcSusTime, sum/float64(num))
+		}
+		//TaskComplTime
+		for i := 0; i < len(recorders[0].TaskComplTime); i++ {
+			var sum float64 = 0.0
+			var num int = 0
+			for j := 0; j < len(recorders); j++ {
+				sum += recorders[j].TaskComplTime[i]
+				num++
+			}
+			averageRecorder.TaskComplTime = append(averageRecorder.TaskComplTime, sum/float64(num))
+		}
+
+	}
+
+	calcAver(&firstFitRecorder, firstFitRecorders)
+	calcAver(&randomFitRecorder, randomFitRecorders)
+	calcAver(&NSGAIIRecorder, NSGAIIRecorders)
+	calcAver(&HAGARecorder, HAGARecorders)
+	calcAver(&MCASGARecorder, MCASGARecorders)
 
 	currentTime = 0 * time.Second
 	// output csv files

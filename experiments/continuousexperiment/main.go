@@ -61,6 +61,6 @@ func main() {
 		appGroups = append(appGroups, experimenttools.ReadApps(numInGroup[i], fmt.Sprintf("%d", i)))
 	}
 
-	experimenttools.ContinuousExperiment(clouds, appGroups, appArrivalTimeIntervals)
+	experimenttools.ContinuousExperiment(clouds, appGroups, appArrivalTimeIntervals, 10)
 
 }
