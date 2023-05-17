@@ -16,8 +16,8 @@ func main() {
 
 	//log.Println("Hello World!")
 
-	var numCloud, numApp int = 10, 140
-	//var numCloud, numApp int = 5, 40
+	//var numCloud, numApp int = 10, 140
+	var numCloud, numApp int = 5, 40
 	var appSuffix string = "0"
 
 	// generate clouds and apps, and write to files
@@ -69,21 +69,62 @@ func main() {
 	fmt.Println("Sto:", StoReq, StoCapa, StoReq/StoCapa)
 	fmt.Println("BW:", BWReq, BWCapa, BWReq/BWCapa)
 
-	before := time.Now()
 	//geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.7, 0.01, 200, algorithms.InitializeUndeployedChromosome, clouds, apps)
 	//geneticAlgorithm := algorithms.NewGenetic(100, 5000, 0.7, 0.007, 200, algorithms.InitializeAcceptableChromosome, clouds, apps)
 	geneticAlgorithm := algorithms.NewGenetic(200, 5000, 0.4, 0.003, 250, algorithms.RandomFitSchedule, algorithms.OnePointCrossOver, true, false, clouds, apps)
-
-	solution, err := geneticAlgorithm.Schedule(clouds, apps)
-	after := time.Now()
+	haga := algorithms.NewHAGA(10, 0.6, 200, 5000, 0.6, 0.7, 250, clouds, apps)
+	nsga := algorithms.NewNSGAII(200, 5000, 1, 0.25, 250, clouds, apps)
+	ff := algorithms.NewFirstFit(clouds, apps)
+	rf := algorithms.NewRandomFit(clouds, apps)
+	geneticBefore := time.Now()
+	geneticSolution, err := geneticAlgorithm.Schedule(clouds, apps)
+	geneticAfter := time.Now()
 	if err != nil {
 		//log.Printf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
 		log.Panicf("geneticAlgorithm.Schedule(clouds, apps), error: %s", err.Error())
 	}
 
+	hagaBefore := time.Now()
+	hagaSolution, err := haga.Schedule(clouds, apps)
+	hagaAfter := time.Now()
+	if err != nil {
+		//log.Printf("haga.Schedule(clouds, apps), error: %s", err.Error())
+		log.Panicf("haga.Schedule(clouds, apps), error: %s", err.Error())
+	}
+
+	nsgaBefore := time.Now()
+	nsgaSolution, err := nsga.Schedule(clouds, apps)
+	nsgaAfter := time.Now()
+	if err != nil {
+		//log.Printf("nsga.Schedule(clouds, apps), error: %s", err.Error())
+		log.Panicf("nsga.Schedule(clouds, apps), error: %s", err.Error())
+	}
+
+	ffBefore := time.Now()
+	ffSolution, err := ff.Schedule(clouds, apps)
+	ffAfter := time.Now()
+	if err != nil {
+		//log.Printf("ff.Schedule(clouds, apps), error: %s", err.Error())
+		log.Panicf("ff.Schedule(clouds, apps), error: %s", err.Error())
+	}
+
+	rfBefore := time.Now()
+	rfSolution, err := rf.Schedule(clouds, apps)
+	rfAfter := time.Now()
+	if err != nil {
+		//log.Printf("rf.Schedule(clouds, apps), error: %s", err.Error())
+		log.Panicf("rf.Schedule(clouds, apps), error: %s", err.Error())
+	}
+
+	log.Println("geneticAlgorithm calculation time:", geneticAfter.Sub(geneticBefore).Seconds())
+	log.Println("haga calculation time:", hagaAfter.Sub(hagaBefore).Seconds())
+	log.Println("nsga calculation time:", nsgaAfter.Sub(nsgaBefore).Seconds())
+	log.Println("ff calculation time:", ffAfter.Sub(ffBefore).Seconds())
+	log.Println("rf calculation time:", rfAfter.Sub(rfBefore).Seconds())
+
 	tmpClouds := model.CloudsCopy(clouds)
 	tmpApps := model.AppsCopy(apps)
-	tmpSolution := model.SolutionCopy(solution)
+	tmpSolution := model.SolutionCopy(geneticSolution)
 
 	tmpClouds = algorithms.SimulateDeploy(tmpClouds, tmpApps, tmpSolution)
 	algorithms.CalcStartComplTime(tmpClouds, tmpApps, tmpSolution.SchedulingResult)
@@ -106,8 +147,11 @@ func main() {
 		log.Printf("Iteration %d: FitnessRecordBestAcceptableUntilNow: %f\n", int(geneticAlgorithm.BestAcceptableUntilNowUpdateIterations[i]), geneticAlgorithm.FitnessRecordBestAcceptableUntilNow[i])
 	}
 
-	log.Println("solution:", solution)
-	log.Println("calculation time:", after.Sub(before).Seconds())
+	log.Println("geneticSolution:", geneticSolution)
+	log.Println("hagaSolution:", hagaSolution)
+	log.Println("nsgaSolution:", nsgaSolution)
+	log.Println("ffSolution:", ffSolution)
+	log.Println("rfSolution:", rfSolution)
 
 	// draw geneticAlgorithm.FitnessRecordIterationBest and geneticAlgorithm.FitnessRecordBestUntilNow on a line chart
 	geneticAlgorithm.DrawChart()
