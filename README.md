@@ -1,5 +1,5 @@
 
-# Code of paper "A Multi-Cloud Containerized Application Scheduling Method Based on Genetic Algorithm"
+# Code of paper "A Scheduling Method for Tasks and Services in IIoT Multi-Cloud Environments"
 
 ---
 
@@ -18,7 +18,7 @@
 * **Experiment code**: "experiments/validateaverage/main.go"
 * **Experiment data**: "experiments-data/validate average"
 
-### The paper's Subection IV. EVALUATION C. MCASGA Operators Factors
+### The paper's Subection IV. EVALUATION C. MCASGA Operators
 * **Experiment code**: "experiments/optimizecpmp/main.go"
 * **Experiment data**: "experiments-data/Fitness values of different operators.txt"
 
